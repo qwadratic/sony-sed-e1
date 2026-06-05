@@ -810,7 +810,7 @@ print(psk.hex())
             for y in 0..<H { gray[y*W] = 255; gray[y*W+W-1] = 255 }
             sendCmd(buildLayoutDisplayCmd(grayscale: gray), label: "LAYOUT cross")
 
-        case "gol", "glider":
+        case "glider":
             log("🛸 Glider demo: random gliders on blank canvas", color: CLR_MAG)
             golStartGliderDemo()
 
@@ -1009,11 +1009,6 @@ print(psk.hex())
                 sendCmd(buildLayoutDisplayCmd(grayscale: gray), label: "LAYOUT all-white")
                 if gDisplayMode == .test {
                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { printREPLHelp() }
-                } else {
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
-                        log("🛸 Glider demo starting!", color: CLR_MAG)
-                        golStartGliderDemo()
-                    }
                 }
             }
 
@@ -1030,11 +1025,6 @@ print(psk.hex())
                 log("✨ Layout image sent! LOOK AT THE GLASSES!", color: CLR_GRN)
                 if gDisplayMode == .test {
                     DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { printREPLHelp() }
-                } else {
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
-                        log("🛸 Glider demo starting!", color: CLR_MAG)
-                        golStartGliderDemo()
-                    }
                 }
             }
 
