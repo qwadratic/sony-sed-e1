@@ -1,0 +1,31 @@
+# Build artifacts
+build/
+.gradle/
+local.properties
+*.class
+*.dex
+*.o
+
+# APKs (large binaries, not source)
+*.apk
+
+# SDK (external, large)
+Sony/
+
+# IDE
+.idea/
+*.iml
+.vscode/
+
+# macOS
+.DS_Store
+
+# Compiled binary
+macos-middleware/glasses-tool
+
+# Temp
+*.log
+*.bin
+*.ips
+/tmp/
+__pycache__/

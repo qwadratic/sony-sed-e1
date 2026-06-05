@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">SEG Explorer</string>
+    <string name="extension_name">SmartEyeglass Explorer</string>
+    <string name="extension_description">Explore all SmartEyeglass APIs</string>
+</resources>
