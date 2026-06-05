@@ -635,77 +635,11 @@ print(psk.hex())
     let H = 138
     var grid: [[Bool]] = []
     var golGeneration = 0
-    var golPattern = 0
-    let golPatternCount = 5
     var golTimer: Timer?
 
     func golInit() {
         grid = Array(repeating: Array(repeating: false, count: W), count: H)
         golGeneration = 0
-    }
-
-    func golLoadPattern(_ idx: Int) {
-        golInit()
-        switch idx {
-        case 0: golLoadGliderGun()
-        case 1: golLoadRandom(density: 0.35)
-        case 2: golLoadPulsar()
-        case 3: golLoadRandom(density: 0.5)
-        case 4: golLoadSpaceships()
-        default: golLoadRandom(density: 0.4)
-        }
-        log("🎮 GoL pattern \(idx) loaded", color: CLR_MAG)
-    }
-
-    func golLoadRandom(density: Double) {
-        for y in 0..<H { for x in 0..<W {
-            grid[y][x] = Double.random(in: 0...1) < density
-        }}
-    }
-
-    func golSet(_ cells: [(Int,Int)], ox: Int, oy: Int) {
-        for (dx, dy) in cells {
-            let x = ox + dx, y = oy + dy
-            if x >= 0 && x < W && y >= 0 && y < H { grid[y][x] = true }
-        }
-    }
-
-    func golLoadGliderGun() {
-        let gun: [(Int,Int)] = [
-            (1,5),(1,6),(2,5),(2,6),
-            (11,5),(11,6),(11,7),(12,4),(12,8),(13,3),(13,9),(14,3),(14,9),
-            (15,6),(16,4),(16,8),(17,5),(17,6),(17,7),(18,6),
-            (21,3),(21,4),(21,5),(22,3),(22,4),(22,5),(23,2),(23,6),
-            (25,1),(25,2),(25,6),(25,7),(35,3),(35,4),(36,3),(36,4)
-        ]
-        golSet(gun, ox: 5, oy: 10)
-        golSet(gun, ox: 5, oy: 60)
-        golSet(gun, ox: 200, oy: 35)
-    }
-
-    func golLoadPulsar() {
-        let pulsar: [(Int,Int)] = [
-            (2,0),(3,0),(4,0),(8,0),(9,0),(10,0),
-            (0,2),(5,2),(7,2),(12,2),(0,3),(5,3),(7,3),(12,3),(0,4),(5,4),(7,4),(12,4),
-            (2,5),(3,5),(4,5),(8,5),(9,5),(10,5),(2,7),(3,7),(4,7),(8,7),(9,7),(10,7),
-            (0,8),(5,8),(7,8),(12,8),(0,9),(5,9),(7,9),(12,9),(0,10),(5,10),(7,10),(12,10),
-            (2,12),(3,12),(4,12),(8,12),(9,12),(10,12)
-        ]
-        golSet(pulsar, ox: 50, oy: 20)
-        golSet(pulsar, ox: 200, oy: 20)
-        golSet(pulsar, ox: 350, oy: 20)
-        golSet(pulsar, ox: 125, oy: 60)
-        golSet(pulsar, ox: 275, oy: 60)
-    }
-
-    func golLoadSpaceships() {
-        let lwss: [(Int,Int)] = [(1,0),(4,0),(0,1),(0,2),(4,2),(0,3),(1,3),(2,3),(3,3)]
-        for row in 0..<6 { for col in 0..<8 {
-            golSet(lwss, ox: 10 + col * 50, oy: 5 + row * 22)
-        }}
-        for _ in 0..<500 {
-            grid[Int.random(in: 0..<H)][Int.random(in: 0..<W)] = true
-        }
     }
 
     func golStep() {
@@ -876,9 +810,9 @@ print(psk.hex())
             for y in 0..<H { gray[y*W] = 255; gray[y*W+W-1] = 255 }
             sendCmd(buildLayoutDisplayCmd(grayscale: gray), label: "LAYOUT cross")
 
-        case "gol":
-            log("🎮 Starting Game of Life!", color: CLR_MAG)
-            golStartLoop()
+        case "gol", "glider":
+            log("🛸 Glider demo: random gliders on blank canvas", color: CLR_MAG)
+            golStartGliderDemo()
 
         // ── WiFi commands ─────────────────────────────────────────────────────
         case "wifi":
@@ -963,18 +897,49 @@ print(psk.hex())
         }
     }
 
-    func golStartLoop() {
-        golPattern = 3
-        golLoadPattern(golPattern)
+
+
+    // ── Glider demo ──────────────────────────────────────────────────────────
+    // 4 glider orientations (classic Conway glider, SE/SW/NE/NW)
+    let gliderShapes: [[(Int,Int)]] = [
+        [(1,0),(2,1),(0,2),(1,2),(2,2)],  // SE
+        [(1,0),(0,1),(0,2),(1,2),(2,2)],  // SW
+        [(1,2),(2,1),(0,0),(1,0),(2,0)],  // NE
+        [(1,2),(0,1),(0,0),(1,0),(2,0)],  // NW
+    ]
+    var gliderSpawnInterval: Double = 0
+    var gliderElapsed: Double = 0
+
+    func spawnGlider() {
+        let shape = gliderShapes[Int.random(in: 0..<4)]
+        let ox = Int.random(in: 5..<(W - 10))
+        let oy = Int.random(in: 5..<(H - 10))
+        for (dx, dy) in shape {
+            let x = ox + dx, y = oy + dy
+            if x >= 0 && x < W && y >= 0 && y < H { grid[y][x] = true }
+        }
+        log("🛸 Glider at (\(ox),\(oy))", color: CLR_MAG)
+    }
+
+    func golStartGliderDemo() {
+        golTimer?.invalidate(); golTimer = nil
+        golInit()                              // blank grid
+        spawnGlider()                          // first glider immediately
+        gliderElapsed = 0
+        gliderSpawnInterval = Double.random(in: 4...10)
         golSendFrame()
-        golTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { _ in
-            golStep(); golStep(); golStep()
-            golSendFrame()
-            if golGeneration % 60 == 0 {
-                golPattern = (golPattern + 1) % golPatternCount
-                golLoadPattern(golPattern)
-                log("🎮 Switched to pattern \(golPattern)", color: CLR_MAG)
+        // Step 2x and send every 0.4s (~2.5fps matches BT throughput)
+        // Spawn a new glider every 4-10s (random)
+        golTimer = Timer.scheduledTimer(withTimeInterval: 0.4, repeats: true) { _ in
+            golStep(); golStep()
+            golGeneration += 1
+            gliderElapsed += 0.4
+            if gliderElapsed >= gliderSpawnInterval {
+                spawnGlider()
+                gliderElapsed = 0
+                gliderSpawnInterval = Double.random(in: 4...10)
             }
+            golSendFrame()
         }
         RunLoop.current.add(golTimer!, forMode: .default)
     }
@@ -1046,8 +1011,8 @@ print(psk.hex())
                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { printREPLHelp() }
                 } else {
                     DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
-                        log("🎮 Starting Game of Life!", color: CLR_MAG)
-                        golStartLoop()
+                        log("🛸 Glider demo starting!", color: CLR_MAG)
+                        golStartGliderDemo()
                     }
                 }
             }
@@ -1067,8 +1032,8 @@ print(psk.hex())
                     DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { printREPLHelp() }
                 } else {
                     DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
-                        log("🎮 Starting Game of Life!", color: CLR_MAG)
-                        golStartLoop()
+                        log("🛸 Glider demo starting!", color: CLR_MAG)
+                        golStartGliderDemo()
                     }
                 }
             }
