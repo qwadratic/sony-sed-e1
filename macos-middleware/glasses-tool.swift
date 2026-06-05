@@ -25,6 +25,7 @@
 import Foundation
 import IOBluetooth
 import Darwin
+import zlib
 
 // ── ANSI colours ─────────────────────────────────────────────────────────────
 let CLR_RED    = "\u{001B}[31m"
@@ -34,6 +35,28 @@ let CLR_BLU    = "\u{001B}[34m"
 let CLR_MAG    = "\u{001B}[35m"
 let CLR_CYN    = "\u{001B}[36m"
 let CLR_RST    = "\u{001B}[0m"
+
+// ── Network helpers ────────────────────────────────────────────────────
+func getInterfaceIP(_ iface: String) -> String? {
+    var addrs: UnsafeMutablePointer<ifaddrs>? = nil
+    guard getifaddrs(&addrs) == 0 else { return nil }
+    defer { freeifaddrs(addrs) }
+    var ptr = addrs
+    while let p = ptr {
+        let name = String(cString: p.pointee.ifa_name)
+        if name == iface,
+           let sa = p.pointee.ifa_addr,
+           sa.pointee.sa_family == sa_family_t(AF_INET) {
+            var host = [CChar](repeating: 0, count: Int(NI_MAXHOST))
+            if getnameinfo(sa, socklen_t(sa.pointee.sa_len), &host,
+                           socklen_t(host.count), nil, 0, NI_NUMERICHOST) == 0 {
+                return String(cString: host)
+            }
+        }
+        ptr = p.pointee.ifa_next
+    }
+    return nil
+}
 
 func log(_ msg: String, color: String = CLR_RST) {
     let ts = DateFormatter.localizedString(from: Date(), dateStyle: .none, timeStyle: .medium)
@@ -630,6 +653,51 @@ print(psk.hex())
         fflush(stdout)
     }
 
+    // ── Ready banner ─────────────────────────────────────────────────────
+    func printReadyBanner() {
+        print("""
+        \(CLR_GRN)
+        ════════════════════════════════════════════════
+        🕶  CONNECTED — glasses ready
+        ════════════════════════════════════════════════\(CLR_RST)
+        \(CLR_YLW)glider\(CLR_RST)        start glider demo (~2.5fps BT)
+        \(CLR_YLW)stop\(CLR_RST)          stop demo
+        \(CLR_YLW)wifi setup\(CLR_RST)    step-by-step WiFi instructions (30fps)
+        \(CLR_YLW)wifi on\(CLR_RST)       enable glasses WiFi radio
+        \(CLR_YLW)wifi connect auto\(CLR_RST)   connect using .env credentials
+        \(CLR_YLW)wifi switch\(CLR_RST)   activate WiFi path (30fps, auto-starts glider)
+        \(CLR_YLW)help\(CLR_RST)          all commands
+        """)
+        print("\(CLR_MAG)> \(CLR_RST)", terminator: "")
+        fflush(stdout)
+    }
+
+    // ── WiFi setup guide ─────────────────────────────────────────────────────
+    func printWifiSetup() {
+        let ssid = config.wifiSSID.isEmpty ? wifiSSID : config.wifiSSID
+        let pswd = config.wifiPSWD.isEmpty ? wifiPass : config.wifiPSWD
+        let ip   = getInterfaceIP("en0") ?? "10.x.x.x"
+        let cmd  = "wifi connect \(ssid.isEmpty ? "<ssid>" : ssid) \(pswd.isEmpty ? "<pass>" : pswd) \(ip)"
+        print("""
+        \(CLR_CYN)\n═══ WiFi SETUP ═══\(CLR_RST)
+        1. \(CLR_GRN)wifi on\(CLR_RST)       — enable glasses WiFi radio
+           Wait: \"WifiStatusRes(0x91): ENABLED\"
+
+        2. \(CLR_YLW)\(cmd)\(CLR_RST)
+           (or: wifi connect auto)
+           Wait: \"WifiConnectivityStatus(0x95): CONNECTED\"
+                 \"Glasses TCP connected!\"
+
+        3. \(CLR_GRN)wifi switch\(CLR_RST)    — move display path to WiFi
+           On 0x97 confirmed: 30fps glider starts automatically
+
+        4. \(CLR_GRN)stop\(CLR_RST) / \(CLR_GRN)glider\(CLR_RST) / \(CLR_GRN)wifi bt\(CLR_RST) — pause / restart / back to BT
+        ════════════════════
+        """)
+        print("\(CLR_MAG)> \(CLR_RST)", terminator: "")
+        fflush(stdout)
+    }
+
     // ── Game of Life engine ───────────────────────────────────────────────────
     let W = 419
     let H = 138
@@ -696,26 +764,27 @@ print(psk.hex())
         return cmd
     }
 
-    // DEFLATE compress via python3 pipes (raw, wbits=-15, level 9)
+    // DEFLATE compress — native zlib, raw wbits=-15 (Java Deflater nowrap=true equivalent)
     func deflateCompress(_ input: [UInt8]) -> [UInt8] {
-        let proc = Process()
-        proc.executableURL = URL(fileURLWithPath: "/usr/bin/python3")
-        proc.arguments = ["-c",
-            "import zlib,sys; d=sys.stdin.buffer.read(); c=zlib.compressobj(9,zlib.DEFLATED,-15); sys.stdout.buffer.write(c.compress(d)+c.flush())"]
-        let stdinPipe = Pipe(); let stdoutPipe = Pipe()
-        proc.standardInput = stdinPipe
-        proc.standardOutput = stdoutPipe
-        proc.standardError = FileHandle.nullDevice
-        do {
-            try proc.run()
-            stdinPipe.fileHandleForWriting.write(Data(input))
-            stdinPipe.fileHandleForWriting.closeFile()
-            proc.waitUntilExit()
-            let result = stdoutPipe.fileHandleForReading.readDataToEndOfFile()
-            if !result.isEmpty { return Array(result) }
-        } catch { log("⚠️ DEFLATE error: \(error)", color: CLR_RED) }
-        log("⚠️ DEFLATE failed, sending uncompressed", color: CLR_RED)
-        return input
+        var strm = z_stream()
+        let rc = deflateInit2_(&strm, Z_BEST_COMPRESSION, Z_DEFLATED, -15, 9,
+                               Z_DEFAULT_STRATEGY, ZLIB_VERSION,
+                               Int32(MemoryLayout<z_stream>.size))
+        guard rc == Z_OK else { log("⚠️ deflateInit2 failed \(rc)", color: CLR_RED); return input }
+        defer { deflateEnd(&strm) }
+        let bufSize = input.count + 1024
+        var buf = [UInt8](repeating: 0, count: bufSize)
+        var inCopy = input
+        inCopy.withUnsafeMutableBufferPointer { inPtr in
+            strm.next_in  = inPtr.baseAddress
+            strm.avail_in = UInt32(input.count)
+        }
+        buf.withUnsafeMutableBufferPointer { outPtr in
+            strm.next_out  = outPtr.baseAddress
+            strm.avail_out = UInt32(bufSize)
+            _ = deflate(&strm, Z_FINISH)
+        }
+        return Array(buf[0..<Int(strm.total_out)])
     }
 
     // ── REPL help ─────────────────────────────────────────────────────────────
@@ -811,8 +880,14 @@ print(psk.hex())
             sendCmd(buildLayoutDisplayCmd(grayscale: gray), label: "LAYOUT cross")
 
         case "glider":
-            log("🛸 Glider demo: random gliders on blank canvas", color: CLR_MAG)
+            log("🛸 Glider demo starting!", color: CLR_MAG)
             golStartGliderDemo()
+
+        case "stop":
+            golTimer?.invalidate(); golTimer = nil
+            let black = [UInt8](repeating: 0, count: W * H)
+            sendCmd(buildLayoutDisplayCmd(grayscale: black), label: "STOP — black frame")
+            log("⏹  Demo stopped. Type 'glider' to restart.", color: CLR_YLW)
 
         // ── WiFi commands ─────────────────────────────────────────────────────
         case "wifi":
@@ -828,10 +903,24 @@ print(psk.hex())
             case "status":
                 sendCmd([0x90, 0x00, 0x00], label: "WifiStatusReq")
             case "connect":
-                let ssid = parts.count > 2 ? String(parts[2]) : wifiSSID
-                let pass = parts.count > 3 ? String(parts[3]) : wifiPass
-                let ip   = parts.count > 4 ? String(parts[4]) : wifiGoIP
-                wifiStartConnect(ssid: ssid, pass: pass, goIP: ip)
+                // wifi connect auto  — use .env creds + en0 IP
+                // wifi connect <ssid> <pass> <ip>
+                if parts.count > 2 && parts[2] == "auto" {
+                    let ssid = config.wifiSSID.isEmpty ? wifiSSID : config.wifiSSID
+                    let pass = config.wifiPSWD.isEmpty ? wifiPass : config.wifiPSWD
+                    let ip   = getInterfaceIP("en0") ?? getInterfaceIP("bridge100") ?? wifiGoIP
+                    guard !ssid.isEmpty, !pass.isEmpty else {
+                        log("⚠️  No SSID/PSWD in .env. Use: wifi connect <ssid> <pass> <ip>", color: CLR_RED)
+                        break
+                    }
+                    log("🔑 Auto: SSID=\(ssid) IP=\(ip)", color: CLR_CYN)
+                    wifiStartConnect(ssid: ssid, pass: pass, goIP: ip)
+                } else {
+                    let ssid = parts.count > 2 ? String(parts[2]) : wifiSSID
+                    let pass = parts.count > 3 ? String(parts[3]) : wifiPass
+                    let ip   = parts.count > 4 ? String(parts[4]) : wifiGoIP
+                    wifiStartConnect(ssid: ssid, pass: pass, goIP: ip)
+                }
             case "switch":
                 if wifiClientFd < 0 {
                     log("⚠️ No TCP connection yet. Wait for glasses to connect.", color: CLR_YLW)
@@ -846,6 +935,8 @@ print(psk.hex())
             case "ip":
                 detectHotspotIP()
                 print("\(CLR_MAG)> \(CLR_RST)", terminator: ""); fflush(stdout); return
+            case "setup":
+                printWifiSetup(); return
             case "ssid":
                 if parts.count > 2 { wifiSSID = String(parts[2]) }
                 log("SSID set to: \(wifiSSID)", color: CLR_CYN)
@@ -1007,9 +1098,8 @@ print(psk.hex())
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
                 let gray = [UInt8](repeating: 0xFF, count: W * H)
                 sendCmd(buildLayoutDisplayCmd(grayscale: gray), label: "LAYOUT all-white")
-                if gDisplayMode == .test {
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { printREPLHelp() }
-                }
+                if gDisplayMode == .test { printREPLHelp() }
+                else { printReadyBanner() }
             }
 
         case (4, 0x06):
@@ -1022,10 +1112,8 @@ print(psk.hex())
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
                 let gray = [UInt8](repeating: 0xFF, count: W * H)
                 sendCmd(buildLayoutDisplayCmd(grayscale: gray), label: "LAYOUT all-white")
-                log("✨ Layout image sent! LOOK AT THE GLASSES!", color: CLR_GRN)
-                if gDisplayMode == .test {
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { printREPLHelp() }
-                }
+                if gDisplayMode == .test { printREPLHelp() }
+                else { printReadyBanner() }
             }
 
         case (4, 0x81):
@@ -1065,18 +1153,25 @@ print(psk.hex())
             log("🔀 WifiDPSwitchPathRes(0x97): path=\(path == 1 ? "WIFI" : "BT")", color: CLR_GRN)
             if path == 1 {
                 wifiActive = true; wifiPhase = 13
-                log("🚀 WiFi data path ACTIVE! GoL frames now stream over TCP.", color: CLR_GRN)
-                log("   BT stays connected for sensors and control.", color: CLR_CYN)
-                // Restart GoL timer at higher rate if already running
-                if golTimer != nil {
-                    golTimer?.invalidate(); golTimer = nil
-                    golTimer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { _ in
-                        golStep()
-                        golSendFrame()
+                log("🚀 WiFi data path ACTIVE — switching to 30fps glider demo!", color: CLR_GRN)
+                golTimer?.invalidate(); golTimer = nil
+                golInit()
+                spawnGlider()
+                gliderElapsed = 0
+                gliderSpawnInterval = Double.random(in: 4...10)
+                golSendFrame()
+                golTimer = Timer.scheduledTimer(withTimeInterval: 1.0/30.0, repeats: true) { _ in
+                    golStep(); golStep()
+                    gliderElapsed += 2.0/30.0
+                    if gliderElapsed >= gliderSpawnInterval {
+                        spawnGlider()
+                        gliderElapsed = 0
+                        gliderSpawnInterval = Double.random(in: 4...10)
                     }
-                    RunLoop.current.add(golTimer!, forMode: .default)
-                    log("🎮 GoL timer restarted at 10fps over WiFi!", color: CLR_MAG)
+                    golSendFrame()
                 }
+                RunLoop.current.add(golTimer!, forMode: .default)
+                log("🎮 30fps glider loop running over WiFi. Type 'stop' to stop.", color: CLR_MAG)
             } else {
                 wifiActive = false; wifiPhase = 0
                 log("⬅️ Data path back to BT.", color: CLR_YLW)
@@ -1183,33 +1278,53 @@ func cmdPairGuide(address: String? = nil) {
 
 // ── Config file ───────────────────────────────────────────────────────────────
 struct GlassesConfig {
-    var btAddress: String = "ac:9b:0a:37:a6:c6"
+    var btAddress: String = "auto"          // "auto" = scan for any paired SmartEyeglass
     var rfcommChannel: BluetoothRFCOMMChannelID = 4
     var captureLog: String = "/tmp/glasses_capture.log"
+    var wifiSSID: String = ""
+    var wifiPSWD: String = ""
 
     static func load() -> GlassesConfig {
         var cfg = GlassesConfig()
-        let candidates = [
-            URL(fileURLWithPath: CommandLine.arguments[0])
-                .deletingLastPathComponent()
-                .appendingPathComponent("glasses.conf").path,
-            "glasses.conf",
-            FileManager.default.currentDirectoryPath + "/glasses.conf"
-        ]
-        for path in candidates {
+        let binDir = URL(fileURLWithPath: CommandLine.arguments[0]).deletingLastPathComponent().path
+        let cwd    = FileManager.default.currentDirectoryPath
+
+        // glasses.conf
+        for path in [binDir + "/glasses.conf", cwd + "/glasses.conf", "glasses.conf"] {
             guard let content = try? String(contentsOfFile: path, encoding: .utf8) else { continue }
             log("📋 Config: \(path)", color: CLR_CYN)
             for line in content.components(separatedBy: .newlines) {
-                let trimmed = line.trimmingCharacters(in: .whitespaces)
-                guard !trimmed.isEmpty, !trimmed.hasPrefix("#") else { continue }
-                let parts = trimmed.split(separator: "=", maxSplits: 1)
-                guard parts.count == 2 else { continue }
-                let key = parts[0].trimmingCharacters(in: .whitespaces)
-                let val = parts[1].trimmingCharacters(in: .whitespaces)
-                switch key {
-                case "bt_address":     cfg.btAddress = val
-                case "rfcomm_channel": cfg.rfcommChannel = BluetoothRFCOMMChannelID(val) ?? 4
-                case "capture_log":    cfg.captureLog = val
+                let t = line.trimmingCharacters(in: .whitespaces)
+                guard !t.isEmpty, !t.hasPrefix("#") else { continue }
+                let p = t.split(separator: "=", maxSplits: 1)
+                guard p.count == 2 else { continue }
+                let k = p[0].trimmingCharacters(in: .whitespaces)
+                let v = p[1].trimmingCharacters(in: .whitespaces)
+                switch k {
+                case "bt_address":     cfg.btAddress = v
+                case "rfcomm_channel": cfg.rfcommChannel = BluetoothRFCOMMChannelID(v) ?? 4
+                case "capture_log":    cfg.captureLog = v
+                case "wifi_ssid":      cfg.wifiSSID = v
+                case "wifi_pswd":      cfg.wifiPSWD = v
+                default: break
+                }
+            }
+            break
+        }
+
+        // .env (SSID= / PSWD= keys)
+        for path in [binDir + "/.env", cwd + "/.env", ".env"] {
+            guard let content = try? String(contentsOfFile: path, encoding: .utf8) else { continue }
+            for line in content.components(separatedBy: .newlines) {
+                let t = line.trimmingCharacters(in: .whitespaces)
+                guard !t.isEmpty, !t.hasPrefix("#") else { continue }
+                let p = t.split(separator: "=", maxSplits: 1)
+                guard p.count == 2 else { continue }
+                let k = p[0].trimmingCharacters(in: .whitespaces)
+                let v = p[1].trimmingCharacters(in: .whitespaces)
+                switch k {
+                case "SSID": if cfg.wifiSSID.isEmpty { cfg.wifiSSID = v }
+                case "PSWD": if cfg.wifiPSWD.isEmpty { cfg.wifiPSWD = v }
                 default: break
                 }
             }
@@ -1219,47 +1334,82 @@ struct GlassesConfig {
     }
 }
 
+// ── Auto-discover paired SmartEyeglass ───────────────────────────────────────
+func autoDiscoverGlasses() -> String? {
+    var candidates: [IOBluetoothDevice] = []
+    if let paired = IOBluetoothDevice.pairedDevices() as? [IOBluetoothDevice] {
+        candidates = paired.filter { ($0.name ?? "").lowercased().contains("smarteyeglass") }
+    }
+    if candidates.isEmpty {
+        log("❌ No paired SmartEyeglass found.", color: CLR_RED)
+        log("   Power on glasses → System Settings → Bluetooth → pair", color: CLR_YLW)
+        log("   Then: ./glasses-tool scan   to verify", color: CLR_YLW)
+        return nil
+    }
+    if candidates.count == 1 {
+        let d = candidates[0]
+        log("🔍 Auto-selected: \(d.name ?? "?") [\(d.addressString ?? "?")]", color: CLR_GRN)
+        return d.addressString
+    }
+    // Multiple — let user pick
+    log("🔍 Multiple SmartEyeglass found — pick one:", color: CLR_CYN)
+    for (i, d) in candidates.enumerated() {
+        log("  [\(i+1)] \(d.name ?? "?")  [\(d.addressString ?? "?")]", color: CLR_CYN)
+    }
+    print("Enter number (default 1): ", terminator: ""); fflush(stdout)
+    if let line = readLine(), let n = Int(line.trimmingCharacters(in: .whitespaces)),
+       n >= 1, n <= candidates.count {
+        return candidates[n-1].addressString
+    }
+    return candidates[0].addressString
+}
+
 let config = GlassesConfig.load()
 
 // ── Entry point ───────────────────────────────────────────────────────────────
 let args = CommandLine.arguments
 
 func usage() {
+    let ssidHint = config.wifiSSID.isEmpty ? "<ssid>" : config.wifiSSID
+    let pswdHint = config.wifiPSWD.isEmpty ? "<pass>" : "***"
     print("""
-    \(CLR_CYN)glasses-tool — Sony SED-E1 macOS BT+WiFi tool\(CLR_RST)
+    \(CLR_CYN)glasses-tool — Sony SED-E1 macOS BT+WiFi\(CLR_RST)
 
-    Config: bt_address=\(config.btAddress)  rfcomm_channel=\(config.rfcommChannel)
+    \(CLR_GRN)./glasses-tool\(CLR_RST)                 auto-discover + connect
+    \(CLR_GRN)./glasses-tool scan\(CLR_RST)             discover nearby BT devices
+    \(CLR_GRN)./glasses-tool pair\(CLR_RST)             pairing guide
+    \(CLR_GRN)./glasses-tool connect [ADDR]\(CLR_RST)   connect to specific address
+    \(CLR_GRN)./glasses-tool probe [ADDR]\(CLR_RST)     probe RFCOMM channels
 
-    \(CLR_GRN)./glasses-tool\(CLR_RST)             connect + Game of Life (BT, then 'wifi switch' for 30fps)
-    \(CLR_GRN)./glasses-tool test\(CLR_RST)         REPL test mode
-    \(CLR_GRN)./glasses-tool scan\(CLR_RST)         discover BT devices
-    \(CLR_GRN)./glasses-tool pair\(CLR_RST)         pairing guide
-    \(CLR_GRN)./glasses-tool sdp\(CLR_RST)          SDP service records
-    \(CLR_GRN)./glasses-tool probe\(CLR_RST)        probe RFCOMM channels 1-10
-    \(CLR_GRN)./glasses-tool connect [ADDR]\(CLR_RST) connect + REPL
-
-    WiFi quick-start (from REPL after BT phase 5):
-      wifi on → wait for 0x91 ENABLED → wifi connect → wait for 0x95 CONNECTED → wifi switch
+    REPL commands (after BT connects):
+      \(CLR_GRN)glider\(CLR_RST)   — start glider demo (BT ~2.5fps)
+      \(CLR_GRN)stop\(CLR_RST)     — stop demo
+      \(CLR_GRN)wifi on\(CLR_RST)  — enable glasses WiFi
+      \(CLR_GRN)wifi connect \(ssidHint) \(pswdHint) <your-ip>\(CLR_RST)
+      \(CLR_GRN)wifi connect auto\(CLR_RST)  — use .env credentials + en0 IP
+      \(CLR_GRN)wifi switch\(CLR_RST)  — switch to WiFi (30fps glider auto-starts)
+      \(CLR_GRN)wifi setup\(CLR_RST)   — print step-by-step WiFi instructions
     """)
 }
 
+func resolveAddress(_ explicit: String?) -> String? {
+    let addr = explicit ?? config.btAddress
+    if addr == "auto" || addr.isEmpty { return autoDiscoverGlasses() }
+    return addr
+}
+
 if args.count < 2 {
-    log("🔌 Connecting to \(config.btAddress) ch=\(config.rfcommChannel)...", color: CLR_CYN)
-    cmdConnect(address: config.btAddress, channel: config.rfcommChannel,
-               captureFile: config.captureLog)
+    guard let addr = resolveAddress(nil) else { exit(1) }
+    log("🔌 Connecting to \(addr) ch=\(config.rfcommChannel)...", color: CLR_CYN)
+    cmdConnect(address: addr, channel: config.rfcommChannel, captureFile: config.captureLog)
 } else {
     switch args[1] {
-    case "scan":    cmdScan()
-    case "pair":    cmdPairGuide(address: args.count > 2 ? args[2] : config.btAddress)
-    case "sdp":     cmdSDP(address: args.count > 2 ? args[2] : config.btAddress)
-    case "probe":   cmdProbe(address: args.count > 2 ? args[2] : config.btAddress)
-    case "test":
-        gDisplayMode = .test
-        let addr = args.count > 2 ? args[2] : config.btAddress
-        log("🧪 Display test mode", color: CLR_MAG)
-        cmdConnect(address: addr, channel: config.rfcommChannel, captureFile: config.captureLog)
+    case "scan":  cmdScan()
+    case "pair":  cmdPairGuide(address: resolveAddress(args.count > 2 ? args[2] : nil) ?? "")
+    case "sdp":   cmdSDP(address: resolveAddress(args.count > 2 ? args[2] : nil) ?? "")
+    case "probe": cmdProbe(address: resolveAddress(args.count > 2 ? args[2] : nil) ?? "")
     case "connect":
-        let addr = args.count > 2 ? args[2] : config.btAddress
+        guard let addr = resolveAddress(args.count > 2 ? args[2] : nil) else { exit(1) }
         var ch = config.rfcommChannel
         if let idx = args.firstIndex(of: "--channel"), args.count > idx + 1 {
             ch = BluetoothRFCOMMChannelID(args[idx + 1]) ?? ch
