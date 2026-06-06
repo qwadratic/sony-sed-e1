@@ -283,6 +283,7 @@ def test_my_feature(proc, events: EventStream):
 | `wifi on` → 0x91 ENABLED | ✅ confirmed |
 | `wifi connect auto` (same-network) | ❌ needs hardware test with new arch |
 | `wifi switch` → 30fps | ❌ not yet end-to-end tested |
+| camera still → JPEG saved | ❌ needs hardware test with new arch |
 
 ### Next steps to test WiFi end-to-end
 
@@ -346,12 +347,18 @@ sony-sed-e1/
 ## 11. Git Log Summary
 
 ```
-3b95fbe fix: getInterfaceIP uses ipconfig subprocess, guard auto IP
-b2b227e feat: multi-glasses, native DEFLATE, 30fps WiFi, stop/setup
-e0dafbf refactor: glider on demand only
-415d9ae feat: glider demo
-a3fb5da feat: WiFi data path (TCP server, WifiConnectReq, state machine)
-d3a36e8 feat: Game of Life rendering from macOS via BT SPP (first working display)
+bb3ee52 plan: thread architecture + Android emulator E2E strategy
+635c8f9 feat(camera): RE complete — implement full camera capture protocol
+a61afbf fix: restore auto-WiFi upgrade; remove auto-demo-start after switch
+381f6f2 feat: Gosper gun GoL, display border, pixel text, camera RE stub
+2d565cd fix: pair/scan UX — no spurious connection, clean exit, no framework noise
+a685380 feat: display keepalive — re-sends LayoutInit+frame after 5s idle
+45ae4db feat: auto WiFi upgrade + harness stats/fixed-layout
+0d225e9 fix: RFCOMM multi-frame reassembly — parse all complete frames per chunk
+af42b94 fix: channel detection, Swift build (awk macOS compat)
+366c078 fix: pytest.ini — set testpaths + pythonpath
+65a6bdd fix: pyproject.toml — test-only project, no build backend
+d0b449f feat: v0.1.0 — harness, tests, WiFi same-network, JSON events, uv
 ```
 
-**Current state**: BT fully working. WiFi implemented (IP bug fixed). JSON logging added. TUI harness built. Needs WiFi end-to-end hardware test.
+**Current state**: BT fully working. Display confirmed at ~2.5fps. WiFi implemented (E2E untested). Camera protocol implemented (untested). Emulator setup scripts exist but --local transport not yet in Swift.
