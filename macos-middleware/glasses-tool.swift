@@ -807,6 +807,13 @@ print(psk.hex())
     var grid: [[Bool]] = []
     var golGeneration = 0
     var golTimer: Timer?
+    // ── Display keepalive ─────────────────────────────────────────────────────
+    // Android's screen timeout will blank the display if we stop sending frames.
+    // Track last frame time; if idle > keepaliveInterval, resend LayoutInit + last frame.
+    var keepAliveTimer: Timer?
+    var lastFrameSentAt: Date = .distantPast
+    var lastDisplayGray: [UInt8]? = nil
+    let keepAliveInterval: TimeInterval = 5.0
 
     func golInit() {
         grid = Array(repeating: Array(repeating: false, count: W), count: H)
@@ -995,6 +1002,7 @@ print(psk.hex())
         case "stop":
             golTimer?.invalidate(); golTimer = nil
             let black = [UInt8](repeating: 0, count: W * H)
+            lastDisplayGray = black; lastFrameSentAt = Date()
             sendCmd(buildLayoutDisplayCmd(grayscale: black), label: "STOP — black frame")
             log("⏹  Demo stopped. Type 'glider' to restart.", color: CLR_YLW)
 
@@ -1081,6 +1089,7 @@ print(psk.hex())
 
         case "quit", "exit", "q":
             log("👋 Disconnecting...", color: CLR_YLW)
+            stopKeepAlive()
             if wifiServerFd >= 0 { Darwin.close(wifiServerFd) }
             if wifiClientFd >= 0 { Darwin.close(wifiClientFd) }
             gChannel?.close()
@@ -1097,12 +1106,42 @@ print(psk.hex())
     // ── GoL frame sender (BT or WiFi) ─────────────────────────────────────────
     func golSendFrame() {
         let gray = golToImage()
+        lastDisplayGray  = gray
+        lastFrameSentAt  = Date()
         let cmd  = buildLayoutDisplayCmd(grayscale: gray)
         if wifiActive && wifiClientFd >= 0 {
             sendViaTCP(cmd, label: "GOL-WiFi gen=\(golGeneration)")
         } else {
             sendCmd(cmd, label: "GOL gen=\(golGeneration)")
         }
+    }
+
+    // ── Display keepalive ─────────────────────────────────────────────────────
+    func startKeepAlive() {
+        keepAliveTimer?.invalidate()
+        keepAliveTimer = Timer.scheduledTimer(withTimeInterval: keepAliveInterval,
+                                              repeats: true) { _ in
+            guard initPhase == 5 else { return }
+            guard Date().timeIntervalSince(lastFrameSentAt) >= keepAliveInterval - 0.5 else { return }
+            log("💤 Keepalive: re-activating display", color: CLR_YLW)
+            // Re-init layout so the display wakes from Android screen timeout
+            sendCmd([0xe0,0x00,0x0a,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00],
+                    label: "LayoutInit(keepalive)")
+            let frame = lastDisplayGray ?? [UInt8](repeating: 0, count: W * H)
+            let cmd   = buildLayoutDisplayCmd(grayscale: frame)
+            if wifiActive && wifiClientFd >= 0 {
+                sendViaTCP(cmd, label: "KEEPALIVE(WiFi)")
+            } else {
+                sendCmd(cmd, label: "KEEPALIVE(BT)")
+            }
+            lastFrameSentAt = Date()
+        }
+        RunLoop.current.add(keepAliveTimer!, forMode: .default)
+    }
+
+    func stopKeepAlive() {
+        keepAliveTimer?.invalidate()
+        keepAliveTimer = nil
     }
 
 
@@ -1248,6 +1287,7 @@ print(psk.hex())
                 else { printReadyBanner() }
             }
             if autoWifi { triggerAutoWifi() }
+            startKeepAlive()
 
         case (4, 0x06):
             let level = data.count > 3 ? data[3] : 0
@@ -1264,6 +1304,7 @@ print(psk.hex())
                 else { printReadyBanner() }
             }
             if autoWifi { triggerAutoWifi() }
+            startKeepAlive()
 
         case (4, 0x81):
             log("✨ P4: FotaStatus (ignoring — waiting for LevelNotification)", color: CLR_YLW)
@@ -1381,6 +1422,7 @@ print(psk.hex())
 
     gDelegate?.onClose = {
         log("Disconnected after \(rxCount) bytes", color: CLR_RED)
+        stopKeepAlive()
         gCapture?.close()
         exit(0)
     }
