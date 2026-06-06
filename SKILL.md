@@ -259,6 +259,11 @@ def test_my_feature(proc, events: EventStream):
 #   Right bottom: pytest runner
 ```
 
+### Camera UAT session
+```bash
+./uat-camera.sh    # 3-pane: glasses-tool REPL + camera event stream + JPEG watcher
+```
+
 ---
 
 ## 8. Config Files
