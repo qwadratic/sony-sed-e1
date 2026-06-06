@@ -365,6 +365,7 @@ func cmdConnect(address: String, channel: BluetoothRFCOMMChannelID = 0,
     var cameraAccum = Data()         // accumulating JPEG chunks from 0xb6
     var cameraFrameCount = 0         // 0xb6 frames received
     var cameraCapturing = false
+    var cameraNextExpectedSeq = 0   // dedup: next expected frame sequence number
 
     // ── RFCOMM reassembly buffer ──────────────────────────────────────────────
     // Multiple wire frames can arrive in one RFCOMM chunk. We buffer incomplete
@@ -472,6 +473,70 @@ func cmdConnect(address: String, channel: BluetoothRFCOMMChannelID = 0,
     }
 
     // ── Accept one TCP connection in background ────────────────────────────────
+    // Handle a complete frame received from WiFi TCP path
+    func handleWifiFrame(_ frame: Data) {
+        let cmdId = frame[0]
+        let rxPayload = frame.count > 3 ? frame[3...].prefix(8).map{String(format:"%02x",$0)}.joined() : ""
+        emitEvent("RX", ["cmd": String(format:"0x%02x",cmdId), "transport": "wifi", "payload": rxPayload])
+        switch cmdId {
+        case 0xb5: // CameraCaptureResponse
+            guard frame.count >= 13 else { return }
+            let status = frame[3]; let format = frame[4]
+            let jpegSize = Int(frame[5]) | (Int(frame[6]) << 8) | (Int(frame[7]) << 16) | (Int(frame[8]) << 24)
+            if status == 0 {
+                cameraExpectedBytes = jpegSize; cameraAccum = Data()
+                cameraFrameCount = 0; cameraCapturing = true; cameraNextExpectedSeq = 0
+                log("📷 CaptureResponse(WiFi): OK fmt=\(format) size=\(jpegSize)B", color: CLR_GRN)
+                emitEvent("CAMERA", ["event": "CAPTURE_RESPONSE", "status": 0, "jpeg_size": jpegSize])
+            } else {
+                cameraCapturing = false
+                log("📷 CaptureResponse(WiFi): ERROR status=\(status)", color: CLR_RED)
+                emitEvent("CAMERA", ["event": "CAPTURE_ERROR", "status": Int(status)])
+            }
+        case 0xb6: // CameraCaptureData
+            guard frame.count > 6 else { return }
+            let frameNum = frame[3]
+            guard Int(frameNum) == cameraNextExpectedSeq else {
+                log("📷 CaptureData(WiFi)[\(frameNum)] dup/OOO skip (expect \(cameraNextExpectedSeq))", color: CLR_YLW)
+                return
+            }
+            let jpegData = frame[frame.index(frame.startIndex, offsetBy: 6)...]
+            cameraAccum.append(jpegData); cameraFrameCount += 1; cameraNextExpectedSeq += 1
+            let pct = cameraExpectedBytes > 0 ? Int(100 * cameraAccum.count / cameraExpectedBytes) : 0
+            log("📷 CaptureData(WiFi)[\(frameNum)] \(jpegData.count)B acc=\(cameraAccum.count) (\(pct)%)", color: CLR_CYN)
+            sendViaTCP([0xf1, 0x00, 0x01, frameNum], label: "CaptureDataAck[\(frameNum)]")
+            emitEvent("CAMERA", ["event": "CHUNK", "frame": Int(frameNum), "bytes": jpegData.count])
+        case 0xb7: // CameraCaptureDataDone
+            let doneStatus = frame.count > 3 ? frame[3] : 0xFF
+            cameraCapturing = false
+            log("📷 CaptureDataDone(WiFi): status=\(doneStatus) acc=\(cameraAccum.count)B frames=\(cameraFrameCount)", color: CLR_GRN)
+            if doneStatus == 0 && !cameraAccum.isEmpty {
+                let ts = Int(Date().timeIntervalSince1970)
+                let outPath = "/tmp/glasses-capture-\(ts).jpg"
+                do {
+                    try cameraAccum.write(to: URL(fileURLWithPath: outPath))
+                    log("✅ JPEG saved: \(outPath) (\(cameraAccum.count)B)", color: CLR_GRN)
+                    emitEvent("CAMERA", ["event": "SAVED", "path": outPath, "bytes": cameraAccum.count])
+                } catch { log("❌ Save failed: \(error)", color: CLR_RED) }
+            }
+            cameraAccum = Data()
+        case 0x97: // WifiDPSwitchPathRes — critical: sets wifiActive
+            let path = frame.count > 3 ? frame[3] : 0
+            log("🔀 WifiDPSwitchPathRes(WiFi): path=\(path == 1 ? "WIFI" : "BT")", color: CLR_GRN)
+            if path == 1 {
+                wifiActive = true; wifiPhase = 13
+                emitEvent("WIFI", ["event": "SWITCHED", "state": 13])
+                emitState()
+                log("🚀 WiFi data path ACTIVE.", color: CLR_GRN)
+                printReadyBanner()
+            } else {
+                wifiActive = false; wifiPhase = 0
+                log("⬅️ Data path back to BT.", color: CLR_YLW)
+            }
+        default: break
+        }
+    }
+
     func wifiStartAccept() {
         let serverFd = wifiServerFd
         DispatchQueue.global(qos: .userInitiated).async {
@@ -498,17 +563,31 @@ func cmdConnect(address: String, channel: BluetoothRFCOMMChannelID = 0,
                 }
             }
 
-            // Read loop — feed to same protocol handler as BT
+            // WiFi read loop — separate reassembly to avoid BT+WiFi collision
+            // Camera responses (0xb5/b6/b7) arrive here; BT handler ignores them when wifiActive
             var buf = [UInt8](repeating: 0, count: 8192)
+            var wifiRxBuf = Data()
             while true {
                 let n = Darwin.read(clientFd, &buf, buf.count)
                 if n <= 0 { break }
-                let data = Data(buf[0..<n])
-                gCapture?.write(direction: " RX(WiFi)", data: data)
+                let chunk = Data(buf[0..<n])
+                gCapture?.write(direction: " RX(WiFi)", data: chunk)
+                wifiRxBuf.append(chunk)
+                // Extract complete frames from wifiRxBuf
+                var frames: [Data] = []
+                while wifiRxBuf.count >= 3 {
+                    let si = wifiRxBuf.startIndex
+                    let fLen = (Int(wifiRxBuf[si+1]) << 8) | Int(wifiRxBuf[si+2])
+                    let fTotal = 3 + fLen
+                    guard wifiRxBuf.count >= fTotal else { break }
+                    frames.append(Data(wifiRxBuf[si..<(si+fTotal)]))
+                    wifiRxBuf = Data(wifiRxBuf[(si+fTotal)...])
+                }
+                let chunkRef = chunk; let framesRef = frames; let nRef = n
                 DispatchQueue.main.async {
-                    log("← WiFi RX \(n)B:", color: CLR_GRN)
-                    print(data.hexDump)
-                    gDelegate?.onData?(data)
+                    log("← WiFi RX \(nRef)B:", color: CLR_GRN)
+                    print(chunkRef.hexDump)
+                    for frame in framesRef { handleWifiFrame(frame) }
                 }
             }
             log("🔴 WiFi TCP connection closed (n<=0)", color: CLR_RED)
@@ -1164,25 +1243,29 @@ print(psk.hex())
                     log("⚠️ Camera already capturing — send 'camera stop' first", color: CLR_YLW)
                     return
                 }
-                // 0xce: [mode=0(STILL), res, quality=1(STANDARD), fps=0]
-                sendCmd([0xce, 0x00, 0x04, 0x00, res, 0x01, 0x00], label: "CameraMode(STILL,\(resArg))")
-                // Small delay then trigger capture
+                // Full camera sequence (always try WiFi; sendViaTCP falls back to BT if fd<0)
+                log("📷 DBG wifiActive=\(wifiActive) wifiClientFd=\(wifiClientFd)", color: CLR_YLW)
+                sendViaTCP([0xce, 0x00, 0x04, 0x00, res, 0x01, 0x00], label: "CameraMode(STILL,\(resArg))")
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                    sendCmd([0xb4, 0x00, 0x00], label: "CameraCaptureRequest")
-                    log("   Waiting for 0xb5 CaptureResponse...", color: CLR_YLW)
-                    log("   JPEG will be saved to /tmp/glasses-capture-<ts>.jpg", color: CLR_YLW)
+                    sendViaTCP([0x38, 0x00, 0x04, 0x13, 0x06, 0x00, 0x00], label: "SensorStart(camera=0x13)")
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                        sendViaTCP([0xb4, 0x00, 0x00], label: "CameraCaptureRequest")
+                        log("   Waiting for 0xb5 CaptureResponse...", color: CLR_YLW)
+                        log("   JPEG will be saved to /tmp/glasses-capture-<ts>.jpg", color: CLR_YLW)
+                    }
                 }
             case "stream":
                 let res = resMap[resArg] ?? 6  // default QVGA for stream
                 log("📷 Camera: SetMode(MOVIE res=\(resArg)) + CaptureRequest (stream)...", color: CLR_CYN)
-                sendCmd([0xce, 0x00, 0x04, 0x01, res, 0x01, 0x00], label: "CameraMode(MOVIE,\(resArg))")
+                sendViaTCP([0xce, 0x00, 0x04, 0x01, res, 0x01, 0x00], label: "CameraMode(MOVIE,\(resArg))")
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                    sendCmd([0xb4, 0x00, 0x00], label: "CameraCaptureRequest")
+                    sendViaTCP([0x38, 0x00, 0x04, 0x13, 0x06, 0x00, 0x00], label: "SensorStart(camera=0x13)")
+                    sendViaTCP([0xb4, 0x00, 0x00], label: "CameraCaptureRequest")
                     log("   Streaming mode started. Type 'camera stop' to cancel.", color: CLR_YLW)
                 }
             case "stop":
                 log("📷 Camera: sending CaptureDataCancel (0xb8)...", color: CLR_YLW)
-                sendCmd([0xb8, 0x00, 0x01, 0x00], label: "CameraCaptureDataCancel")
+                sendViaTCP([0xb8, 0x00, 0x01, 0x00], label: "CameraCaptureDataCancel")
                 cameraCapturing = false
                 cameraAccum = Data()
             default:
@@ -1477,8 +1560,8 @@ print(psk.hex())
                 log("⬅️ Glasses switched us back to BT path.", color: CLR_YLW)
             }
 
-        // ── Camera responses (any phase >= 5) ────────────────────────────────────
-        case (_, 0xb5) where initPhase >= 5: // OpenAppCameraCaptureResponse
+        // ── Camera responses via BT (only when WiFi NOT active; WiFi path handles them above) ───
+        case (_, 0xb5) where initPhase >= 5 && !wifiActive: // OpenAppCameraCaptureResponse
             // payload: [status(1), format(1), jpeg_size(4 LE), field4(4 LE)] = 10 bytes
             if data.count >= 13 {
                 let status = data[3]
@@ -1500,7 +1583,7 @@ print(psk.hex())
                 log("📷 CaptureResponse: short payload (\(data.count)B)", color: CLR_YLW)
             }
 
-        case (_, 0xb6) where initPhase >= 5: // OpenAppCameraCaptureData
+        case (_, 0xb6) where initPhase >= 5 && !wifiActive: // OpenAppCameraCaptureData (BT only)
             // payload: [frame_num(1), data_len(2 LE), data(data_len bytes)]
             guard data.count >= 6 else {
                 log("📷 CaptureData: too short (\(data.count)B)", color: CLR_YLW)
@@ -1516,10 +1599,11 @@ print(psk.hex())
             let pct = cameraExpectedBytes > 0 ? Int(100 * cameraAccum.count / cameraExpectedBytes) : 0
             log("📷 CaptureData[\(frameNum)] \(chunkData.count)B accumulated=\(cameraAccum.count)/\(cameraExpectedBytes) (\(pct)%)", color: CLR_CYN)
             // ACK immediately: 0xf1 [frame_num]
-            sendCmd([0xf1, 0x00, 0x01, frameNum], label: "CaptureDataAck[\(frameNum)]")
+            let ackSend = wifiActive ? sendViaTCP : sendCmd
+            ackSend([0xf1, 0x00, 0x01, frameNum], "CaptureDataAck[\(frameNum)]")
             emitEvent("CAMERA", ["event": "CHUNK", "frame": Int(frameNum), "bytes": chunkData.count, "total": cameraAccum.count])
 
-        case (_, 0xb7) where initPhase >= 5: // OpenAppCameraCaptureDataDone
+        case (_, 0xb7) where initPhase >= 5 && !wifiActive: // OpenAppCameraCaptureDataDone (BT only)
             // payload: [status(1), count(1), total_size(4 LE)] = 6 bytes
             let status = data.count > 3 ? data[3] : 0xFF
             let framesDeclared = data.count > 4 ? data[4] : 0
