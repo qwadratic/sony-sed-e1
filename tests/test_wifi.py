@@ -9,6 +9,12 @@ from helpers.events import EventStream
 from conftest import cmd
 
 
+@pytest.fixture(autouse=True)
+def _skip_in_local_mode(local_mode):
+    if local_mode:
+        pytest.skip('WiFi tests not applicable in --local emulator mode')
+
+
 def _wait_phase5(events: EventStream, timeout: float = 30.0):
     """Block until protocol reaches phase 5."""
     deadline = time.time() + timeout

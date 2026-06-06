@@ -21,6 +21,16 @@ REPO = "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1"
 GLASSES_TOOL = f"{REPO}/macos-middleware/glasses-tool"
 
 
+def pytest_addoption(parser):
+    parser.addoption('--local', default=None, help='HOST:PORT for local/emulator transport')
+
+
+@pytest.fixture(scope="session")
+def local_mode(request) -> bool:
+    """True when --local flag is set (emulator TCP mode)."""
+    return request.config.getoption('--local') is not None
+
+
 @pytest.fixture(scope="session")
 def events() -> EventStream:
     es = EventStream()
@@ -29,7 +39,7 @@ def events() -> EventStream:
 
 
 @pytest.fixture(scope="module")
-def proc(events: EventStream):
+def proc(request, events: EventStream):
     """Spawn glasses-tool connect (one connection per test module).
 
     Auto-selects the first paired SmartEyeglass by writing '1\\n' to stdin
@@ -42,8 +52,11 @@ def proc(events: EventStream):
     import os
     events.clear()
 
+    local = request.config.getoption('--local')
     addr = os.environ.get("GLASSES_ADDR", "")
     cmd_args = [GLASSES_TOOL, "connect"] + ([addr] if addr else [])
+    if local:
+        cmd_args += ['--local', local]
 
     p = subprocess.Popen(
         cmd_args,
@@ -54,7 +67,8 @@ def proc(events: EventStream):
     )
     # Queue '1\n' so the multi-device selector auto-picks device #1
     # without blocking readLine() in glasses-tool.
-    if not addr:
+    # Skip in --local mode (no BT discovery).
+    if not addr and not local:
         try:
             p.stdin.write(b"1\n")  # type: ignore[union-attr]
             p.stdin.flush()
