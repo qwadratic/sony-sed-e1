@@ -357,6 +357,12 @@ func cmdConnect(address: String, channel: BluetoothRFCOMMChannelID = 0,
             "tcp_connected": wifiClientFd >= 0, "bt_connected": gChannel != nil
         ])
     }
+
+    // ── RFCOMM reassembly buffer ──────────────────────────────────────────────
+    // Multiple wire frames can arrive in one RFCOMM chunk. We buffer incomplete
+    // data here and parse complete frames [cmdId:1B][len:2B][payload:lenB] one
+    // at a time, so every frame gets its own pass through the dispatch switch.
+    var rxBuf = Data()
     var wifiPass   = ""   // populated from .env PSWD=
     var wifiGoIP   = ""   // macOS WiFi IP (en0); populated at connect time
     let wifiWriteQueue = DispatchQueue(label: "glasses.wifi.write", qos: .userInitiated)
@@ -1141,9 +1147,20 @@ print(psk.hex())
     gDelegate?.onData = { data in
         rxCount += data.count
         gCapture?.write(direction: " RX(BT)", data: data)
+        rxBuf.append(data)
 
-        guard data.count >= 3 else { return }
-        let cmdId = data[0]
+        // Consume all complete frames from rxBuf
+        while rxBuf.count >= 3 {
+            let si    = rxBuf.startIndex
+            let fLen  = (Int(rxBuf[si + 1]) << 8) | Int(rxBuf[si + 2])
+            let fTotal = 3 + fLen
+            guard rxBuf.count >= fTotal else { break }   // partial frame — wait for more
+            let frame = Data(rxBuf[si ..< (si + fTotal)])
+            rxBuf     = Data(rxBuf[(si + fTotal)...])    // advance past this frame
+
+            // Shadow outer `data` so every existing reference below works unchanged
+            let data   = frame
+            let cmdId  = data[0]
 
         // Emit RX event for every incoming command
         let rxNames: [UInt8: String] = [
@@ -1330,6 +1347,7 @@ print(psk.hex())
         // Print RX dump AFTER switch (so phase-transition logs appear first)
         log("← RX \(data.count)B (total \(rxCount)):", color: CLR_GRN)
         print(data.hexDump)
+        } // end while — next complete frame
     }
 
     gDelegate?.onClose = {
