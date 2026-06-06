@@ -19,6 +19,7 @@
  Usage:
    ./glasses-tool          (connect + GoL over BT, then optionally switch to WiFi)
    ./glasses-tool test     (connect + REPL test mode)
+   ./glasses-tool --local HOST:PORT  (connect via TCP to emulator/ADB forward)
    ./glasses-tool scan
 */
 
@@ -299,34 +300,42 @@ var gDisplayMode: DisplayMode = .gol
 
 // MARK: connect
 func cmdConnect(address: String, channel: BluetoothRFCOMMChannelID = 0,
-                captureFile: String? = nil) {
-    guard let device = IOBluetoothDevice(addressString: address) else {
-        log("Cannot create device for \(address) — is it paired?", color: CLR_RED)
-        return
-    }
+                captureFile: String? = nil, localTCPFd: Int32 = -1) {
+    let isLocalMode = localTCPFd >= 0
 
-    let name = device.name ?? address
-    log("Connecting to \(name) [\(address)]...", color: CLR_CYN)
-    saveLastUsed(address)   // remember for next run (skips scan)
-    gJSONLog = JSONEventLog(path: "/tmp/glasses-events.jsonl")
-
-    device.performSDPQuery(nil)
-    RunLoop.current.run(until: Date().addingTimeInterval(4))
-
+    var device: IOBluetoothDevice? = nil
     var rfcommChannel: BluetoothRFCOMMChannelID = channel
-    if rfcommChannel == 0 {
-        if let services = device.services as? [IOBluetoothSDPServiceRecord] {
-            for svc in services {
-                var ch: BluetoothRFCOMMChannelID = 0
-                if svc.getRFCOMMChannelID(&ch) == kIOReturnSuccess {
-                    log("SPP found on channel \(ch) via SDP", color: CLR_GRN)
-                    rfcommChannel = ch; break
+
+    if isLocalMode {
+        log("🔌 Local TCP mode: fd=\(localTCPFd) → \(address)", color: CLR_CYN)
+    } else {
+        guard let dev = IOBluetoothDevice(addressString: address) else {
+            log("Cannot create device for \(address) — is it paired?", color: CLR_RED)
+            return
+        }
+        device = dev
+        let name = dev.name ?? address
+        log("Connecting to \(name) [\(address)]...", color: CLR_CYN)
+        saveLastUsed(address)   // remember for next run (skips scan)
+
+        dev.performSDPQuery(nil)
+        RunLoop.current.run(until: Date().addingTimeInterval(4))
+
+        if rfcommChannel == 0 {
+            if let services = dev.services as? [IOBluetoothSDPServiceRecord] {
+                for svc in services {
+                    var ch: BluetoothRFCOMMChannelID = 0
+                    if svc.getRFCOMMChannelID(&ch) == kIOReturnSuccess {
+                        log("SPP found on channel \(ch) via SDP", color: CLR_GRN)
+                        rfcommChannel = ch; break
+                    }
                 }
             }
+            if rfcommChannel == 0 { rfcommChannel = 1 }
         }
-        if rfcommChannel == 0 { rfcommChannel = 1 }
     }
 
+    gJSONLog = JSONEventLog(path: "/tmp/glasses-events.jsonl")
     gCapture = captureFile.map { CaptureLog(path: $0) }
     gDelegate = RFCOMMDelegate()
 
@@ -351,6 +360,9 @@ func cmdConnect(address: String, channel: BluetoothRFCOMMChannelID = 0,
     var wifiSSID   = ""   // populated from .env SSID=
     // Auto-upgrade BT→WiFi after phase5 when .env credentials are present
     let autoWifi   = !config.wifiSSID.isEmpty && (getInterfaceIP("en0") != nil)
+
+    // Local mode: TCP fd IS the primary transport — skip BT, WiFi path "always on"
+    if isLocalMode { wifiClientFd = localTCPFd; wifiActive = true }
 
     // ── emitState helper ──────────────────────────────────────────────────────
     func emitState() {
@@ -378,6 +390,7 @@ func cmdConnect(address: String, channel: BluetoothRFCOMMChannelID = 0,
 
     // ── Send over BT RFCOMM (chunked to MTU) ──────────────────────────────────
     func sendCmd(_ bytes: [UInt8], label: String) {
+        if isLocalMode { sendViaTCP(bytes, label: label); return }
         guard let ch = gChannel else { log("TX failed: no channel", color: CLR_RED); return }
         let mtu = Int(ch.getMTU())
         let chunkSize = mtu > 0 ? mtu : 665
@@ -1376,21 +1389,11 @@ print(psk.hex())
         RunLoop.current.add(golTimer!, forMode: .default)
     }
 
-    // ── Wire up delegates ─────────────────────────────────────────────────────
-    gDelegate?.onOpen = { channel in
-        log("RFCOMM open ch\(rfcommChannel) MTU=\(channel.getMTU())", color: CLR_GRN)
-        log("Handshake starting: waiting for ProtocolVersion...", color: CLR_YLW)
-        DispatchQueue.global(qos: .userInitiated).async {
-            while let line = readLine() {
-                DispatchQueue.main.async { handleREPLCommand(line) }
-            }
-        }
-    }
-
-    gDelegate?.onData = { data in
-        rxCount += data.count
-        gCapture?.write(direction: " RX(BT)", data: data)
-        rxBuf.append(data)
+    // ── RX dispatch (shared between BT and local TCP) ─────────────────────────
+    func processRxData(_ incomingData: Data, transport: String = "BT") {
+        rxCount += incomingData.count
+        gCapture?.write(direction: " RX(\(transport))", data: incomingData)
+        rxBuf.append(incomingData)
 
         // Consume all complete frames from rxBuf
         while rxBuf.count >= 3 {
@@ -1660,25 +1663,95 @@ print(psk.hex())
         } // end while — next complete frame
     }
 
-    gDelegate?.onClose = {
-        log("Disconnected after \(rxCount) bytes", color: CLR_RED)
-        gCapture?.close()
-        exit(0)
-    }
+    // ── Wire up delegates / start transport ────────────────────────────────────
+    if isLocalMode {
+        // Local TCP: start REPL + read loop directly, no BT
+        log("🔌 Local TCP connected. Waiting for ProtocolVersion...", color: CLR_YLW)
+        printReadyBanner()
+        DispatchQueue.global(qos: .userInitiated).async {
+            while let line = readLine() {
+                DispatchQueue.main.async { handleREPLCommand(line) }
+            }
+        }
+        DispatchQueue.global(qos: .userInitiated).async {
+            var buf = [UInt8](repeating: 0, count: 8192)
+            while true {
+                let n = Darwin.read(localTCPFd, &buf, buf.count)
+                if n <= 0 { break }
+                let chunk = Data(buf[0..<n])
+                DispatchQueue.main.async { processRxData(chunk, transport: "LOCAL") }
+            }
+            log("🔴 Local TCP connection closed", color: CLR_RED)
+            DispatchQueue.main.async {
+                gCapture?.close()
+                exit(0)
+            }
+        }
+    } else {
+        gDelegate?.onOpen = { channel in
+            log("RFCOMM open ch\(rfcommChannel) MTU=\(channel.getMTU())", color: CLR_GRN)
+            log("Handshake starting: waiting for ProtocolVersion...", color: CLR_YLW)
+            DispatchQueue.global(qos: .userInitiated).async {
+                while let line = readLine() {
+                    DispatchQueue.main.async { handleREPLCommand(line) }
+                }
+            }
+        }
+        gDelegate?.onData = { data in processRxData(data) }
+        gDelegate?.onClose = {
+            log("Disconnected after \(rxCount) bytes", color: CLR_RED)
+            gCapture?.close()
+            exit(0)
+        }
 
-    var tempChannel: IOBluetoothRFCOMMChannel?
-    let result = device.openRFCOMMChannelAsync(&tempChannel,
-                                               withChannelID: rfcommChannel,
-                                               delegate: gDelegate)
-    guard result == kIOReturnSuccess else {
-        log("openRFCOMMChannelAsync failed: 0x\(String(format: "%08x", result))", color: CLR_RED)
-        log("  • Glasses not paired with this Mac?", color: CLR_YLW)
-        log("  • Try: ./glasses-tool probe \(address)", color: CLR_YLW)
-        return
+        var tempChannel: IOBluetoothRFCOMMChannel?
+        let result = device!.openRFCOMMChannelAsync(&tempChannel,
+                                                   withChannelID: rfcommChannel,
+                                                   delegate: gDelegate)
+        guard result == kIOReturnSuccess else {
+            log("openRFCOMMChannelAsync failed: 0x\(String(format: "%08x", result))", color: CLR_RED)
+            log("  • Glasses not paired with this Mac?", color: CLR_YLW)
+            log("  • Try: ./glasses-tool probe \(address)", color: CLR_YLW)
+            return
+        }
+        log("RFCOMM connection in progress...", color: CLR_CYN)
     }
-    log("RFCOMM connection in progress...", color: CLR_CYN)
     RunLoop.current.run()
     gCapture?.close()
+}
+
+// MARK: local TCP
+func cmdConnectLocal(host: String, port: UInt16) {
+    let fd = Darwin.socket(AF_INET, SOCK_STREAM, 0)
+    guard fd >= 0 else {
+        log("❌ socket() failed: \(String(cString: strerror(errno)))", color: CLR_RED)
+        return
+    }
+
+    var addr = sockaddr_in()
+    addr.sin_len    = UInt8(MemoryLayout<sockaddr_in>.size)
+    addr.sin_family = sa_family_t(AF_INET)
+    addr.sin_port   = port.bigEndian
+    guard host.withCString({ inet_pton(AF_INET, $0, &addr.sin_addr) }) == 1 else {
+        log("❌ Invalid host: \(host)", color: CLR_RED)
+        Darwin.close(fd)
+        return
+    }
+
+    log("🔌 Connecting to \(host):\(port)...", color: CLR_CYN)
+    let connectRet = withUnsafeMutablePointer(to: &addr) {
+        $0.withMemoryRebound(to: sockaddr.self, capacity: 1) {
+            Darwin.connect(fd, $0, socklen_t(MemoryLayout<sockaddr_in>.size))
+        }
+    }
+    guard connectRet == 0 else {
+        log("❌ connect(\(host):\(port)) failed: \(String(cString: strerror(errno)))", color: CLR_RED)
+        Darwin.close(fd)
+        return
+    }
+
+    log("✅ TCP connected to \(host):\(port) fd=\(fd)", color: CLR_GRN)
+    cmdConnect(address: "local:\(host):\(port)", localTCPFd: fd)
 }
 
 // MARK: probe
@@ -1947,8 +2020,9 @@ func usage() {
     \(CLR_GRN)./glasses-tool pair\(CLR_RST)             pairing guide
     \(CLR_GRN)./glasses-tool connect [ADDR]\(CLR_RST)   connect to specific address
     \(CLR_GRN)./glasses-tool probe [ADDR]\(CLR_RST)     probe RFCOMM channels
+    \(CLR_GRN)./glasses-tool --local HOST:PORT\(CLR_RST)  TCP transport (emulator/ADB)
 
-    REPL commands (after BT connects):
+    REPL commands (after connect):
       \(CLR_GRN)glider\(CLR_RST)   — start glider demo (BT ~2.5fps)
       \(CLR_GRN)stop\(CLR_RST)     — stop demo
       \(CLR_GRN)wifi on\(CLR_RST)  — enable glasses WiFi
@@ -1982,10 +2056,21 @@ if args.count < 2 {
             ch = BluetoothRFCOMMChannelID(args[idx + 1]) ?? ch
         }
         cmdConnect(address: addr, channel: ch, captureFile: config.captureLog)
+    case "--local":
+        guard args.count > 2 else {
+            log("❌ --local requires HOST:PORT argument", color: CLR_RED)
+            usage(); exit(1)
+        }
+        let hostPort = args[2].split(separator: ":", maxSplits: 1)
+        guard hostPort.count == 2, let p = UInt16(hostPort[1]) else {
+            log("❌ Invalid HOST:PORT: \(args[2])", color: CLR_RED)
+            exit(1)
+        }
+        cmdConnectLocal(host: String(hostPort[0]), port: p)
     case "-h", "--help", "help":
         usage(); exit(0)
     default:
-        if args[1].contains(":") {
+        if args[1].contains(":") && !args[1].hasPrefix("--") {
             cmdConnect(address: args[1], channel: config.rfcommChannel,
                        captureFile: config.captureLog)
         } else { usage() }
