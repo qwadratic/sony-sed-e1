@@ -349,6 +349,8 @@ func cmdConnect(address: String, channel: BluetoothRFCOMMChannelID = 0,
     var wifiServerFd: Int32 = -1
     var wifiClientFd: Int32 = -1
     var wifiSSID   = ""   // populated from .env SSID=
+    // Auto-upgrade BT→WiFi after phase5 when .env credentials are available
+    let autoWifi   = !config.wifiSSID.isEmpty && (getInterfaceIP("en0") != nil)
 
     // ── emitState helper ──────────────────────────────────────────────────────
     func emitState() {
@@ -482,6 +484,12 @@ func cmdConnect(address: String, channel: BluetoothRFCOMMChannelID = 0,
                 log("   Type 'wifi switch' to activate WiFi data path.", color: CLR_YLW)
                 wifiPhase = 12
                 emitState()
+                if autoWifi {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                        log("🌐 Auto: switching to WiFi data path...", color: CLR_CYN)
+                        sendCmd([0x96, 0x00, 0x01, 0x01], label: "WifiDPSwitchPathReq(WIFI)")
+                    }
+                }
             }
 
             // Read loop — feed to same protocol handler as BT
@@ -735,6 +743,17 @@ print(psk.hex())
         """)
         print("\(CLR_MAG)> \(CLR_RST)", terminator: "")
         fflush(stdout)
+    }
+
+    // ── Auto WiFi upgrade sequence ──────────────────────────────────────────
+    func triggerAutoWifi() {
+        guard autoWifi else { return }
+        log("🌐 Auto WiFi upgrade starting (SSID: \(config.wifiSSID))...", color: CLR_CYN)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+            sendCmd([0x92, 0x00, 0x00], label: "WifiStatusTurnOnReq")
+            wifiPhase = 10
+            emitState()
+        }
     }
 
     // ── Ready banner ─────────────────────────────────────────────────────
@@ -1228,6 +1247,7 @@ print(psk.hex())
                 if gDisplayMode == .test { printREPLHelp() }
                 else { printReadyBanner() }
             }
+            if autoWifi { triggerAutoWifi() }
 
         case (4, 0x06):
             let level = data.count > 3 ? data[3] : 0
@@ -1243,6 +1263,7 @@ print(psk.hex())
                 if gDisplayMode == .test { printREPLHelp() }
                 else { printReadyBanner() }
             }
+            if autoWifi { triggerAutoWifi() }
 
         case (4, 0x81):
             log("✨ P4: FotaStatus (ignoring — waiting for LevelNotification)", color: CLR_YLW)
@@ -1261,10 +1282,18 @@ print(psk.hex())
             let sName = Int(status) < statusNames.count ? statusNames[Int(status)] : "?"
             log("📶 WifiStatusRes(0x91): \(sName) (\(status))", color: status == 3 ? CLR_GRN : CLR_MAG)
             if status == 3 && wifiPhase == 10 {
-                log("✅ Glasses WiFi ENABLED. Type 'wifi connect' to proceed.", color: CLR_GRN)
+                log("✅ Glasses WiFi ENABLED.", color: CLR_GRN)
                 wifiPhase = 11
                 emitEvent("WIFI", ["event": "ENABLED", "state": Int(status)])
                 emitState()
+                if autoWifi {
+                    let ssid = config.wifiSSID
+                    let pass = config.wifiPSWD
+                    let ip   = getInterfaceIP("en0") ?? ""
+                    guard !ip.isEmpty else { log("⚠️ Auto WiFi: no en0 IP", color: CLR_YLW); return }
+                    log("🌐 Auto: connecting to '\(ssid)'...", color: CLR_CYN)
+                    wifiStartConnect(ssid: ssid, pass: pass, goIP: ip)
+                }
             }
 
         case (_, 0x95): // WifiConnectivityStatus
