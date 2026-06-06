@@ -349,8 +349,6 @@ func cmdConnect(address: String, channel: BluetoothRFCOMMChannelID = 0,
     var wifiServerFd: Int32 = -1
     var wifiClientFd: Int32 = -1
     var wifiSSID   = ""   // populated from .env SSID=
-    // Auto-upgrade BT→WiFi after phase5 when .env credentials are available
-    let autoWifi   = !config.wifiSSID.isEmpty && (getInterfaceIP("en0") != nil)
 
     // ── emitState helper ──────────────────────────────────────────────────────
     func emitState() {
@@ -484,12 +482,7 @@ func cmdConnect(address: String, channel: BluetoothRFCOMMChannelID = 0,
                 log("   Type 'wifi switch' to activate WiFi data path.", color: CLR_YLW)
                 wifiPhase = 12
                 emitState()
-                if autoWifi {
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                        log("🌐 Auto: switching to WiFi data path...", color: CLR_CYN)
-                        sendCmd([0x96, 0x00, 0x01, 0x01], label: "WifiDPSwitchPathReq(WIFI)")
-                    }
-                }
+                log("✅ Type 'wifi switch' to activate WiFi path.", color: CLR_YLW)
             }
 
             // Read loop — feed to same protocol handler as BT
@@ -745,17 +738,6 @@ print(psk.hex())
         fflush(stdout)
     }
 
-    // ── Auto WiFi upgrade sequence ──────────────────────────────────────────
-    func triggerAutoWifi() {
-        guard autoWifi else { return }
-        log("🌐 Auto WiFi upgrade starting (SSID: \(config.wifiSSID))...", color: CLR_CYN)
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
-            sendCmd([0x92, 0x00, 0x00], label: "WifiStatusTurnOnReq")
-            wifiPhase = 10
-            emitState()
-        }
-    }
-
     // ── Ready banner ─────────────────────────────────────────────────────
     func printReadyBanner() {
         print("""
@@ -807,13 +789,7 @@ print(psk.hex())
     var grid: [[Bool]] = []
     var golGeneration = 0
     var golTimer: Timer?
-    // ── Display keepalive ─────────────────────────────────────────────────────
-    // Android's screen timeout will blank the display if we stop sending frames.
-    // Track last frame time; if idle > keepaliveInterval, resend LayoutInit + last frame.
-    var keepAliveTimer: Timer?
-    var lastFrameSentAt: Date = .distantPast
-    var lastDisplayGray: [UInt8]? = nil
-    let keepAliveInterval: TimeInterval = 5.0
+
 
     func golInit() {
         grid = Array(repeating: Array(repeating: false, count: W), count: H)
@@ -834,11 +810,84 @@ print(psk.hex())
         golGeneration += 1
     }
 
+    // ── 5×7 pixel font (ASCII 32-127) — one byte per column, LSB = top row ───
+    let font5x7: [UInt8] = [
+        // SPC !   "   #   $   %   &   '  (   )   *   +   ,   -   .   /
+        0,0,0,0,0,  0x5F,0,0,0,0,  0x03,0,0x03,0,0,  0x14,0x7F,0x14,0x7F,0x14,
+        0x24,0x2A,0x7F,0x2A,0x12,  0x23,0x13,0x08,0x64,0x62,  0x36,0x49,0x55,0x22,0x50,  0x03,0,0,0,0,
+        0,0x1C,0x22,0x41,0,  0,0x41,0x22,0x1C,0,  0x14,0x08,0x3E,0x08,0x14,  0x08,0x08,0x3E,0x08,0x08,
+        0,0x50,0x30,0,0,  0x08,0x08,0x08,0x08,0x08,  0,0x60,0x60,0,0,  0x20,0x10,0x08,0x04,0x02,
+        // 0-9
+        0x3E,0x51,0x49,0x45,0x3E,  0,0x42,0x7F,0x40,0,  0x42,0x61,0x51,0x49,0x46,  0x21,0x41,0x45,0x4B,0x31,
+        0x18,0x14,0x12,0x7F,0x10,  0x27,0x45,0x45,0x45,0x39,  0x3C,0x4A,0x49,0x49,0x30,  0x01,0x71,0x09,0x05,0x03,
+        0x36,0x49,0x49,0x49,0x36,  0x06,0x49,0x49,0x29,0x1E,
+        // :   ;   <   =   >   ?   @
+        0,0x36,0x36,0,0,  0,0x56,0x36,0,0,  0x08,0x14,0x22,0x41,0,  0x14,0x14,0x14,0x14,0x14,
+        0,0x41,0x22,0x14,0x08,  0x02,0x01,0x51,0x09,0x06,  0x32,0x49,0x79,0x41,0x3E,
+        // A-Z
+        0x7E,0x11,0x11,0x11,0x7E,  0x7F,0x49,0x49,0x49,0x36,  0x3E,0x41,0x41,0x41,0x22,  0x7F,0x41,0x41,0x22,0x1C,
+        0x7F,0x49,0x49,0x49,0x41,  0x7F,0x09,0x09,0x09,0x01,  0x3E,0x41,0x49,0x49,0x7A,  0x7F,0x08,0x08,0x08,0x7F,
+        0,0x41,0x7F,0x41,0,  0x20,0x40,0x41,0x3F,0x01,  0x7F,0x08,0x14,0x22,0x41,  0x7F,0x40,0x40,0x40,0x40,
+        0x7F,0x02,0x0C,0x02,0x7F,  0x7F,0x04,0x08,0x10,0x7F,  0x3E,0x41,0x41,0x41,0x3E,  0x7F,0x09,0x09,0x09,0x06,
+        0x3E,0x41,0x51,0x21,0x5E,  0x7F,0x09,0x19,0x29,0x46,  0x46,0x49,0x49,0x49,0x31,  0x01,0x01,0x7F,0x01,0x01,
+        0x3F,0x40,0x40,0x40,0x3F,  0x1F,0x20,0x40,0x20,0x1F,  0x3F,0x40,0x38,0x40,0x3F,  0x63,0x14,0x08,0x14,0x63,
+        0x07,0x08,0x70,0x08,0x07,  0x61,0x51,0x49,0x45,0x43,
+        // [  \  ]  ^  _  `  a-z
+        0,0x7F,0x41,0x41,0,  0x02,0x04,0x08,0x10,0x20,  0,0x41,0x41,0x7F,0,
+        0x04,0x02,0x01,0x02,0x04,  0x40,0x40,0x40,0x40,0x40,  0,0x01,0x02,0x04,0,
+        0x20,0x54,0x54,0x54,0x78,  0x7F,0x48,0x44,0x44,0x38,  0x38,0x44,0x44,0x44,0x20,  0x38,0x44,0x44,0x48,0x7F,
+        0x38,0x54,0x54,0x54,0x18,  0x08,0x7E,0x09,0x01,0x02,  0x0C,0x52,0x52,0x52,0x3E,  0x7F,0x08,0x04,0x04,0x78,
+        0,0x44,0x7D,0x40,0,  0x20,0x40,0x44,0x3D,0,  0x7F,0x10,0x28,0x44,0,  0,0x41,0x7F,0x40,0,
+        0x7C,0x04,0x18,0x04,0x78,  0x7C,0x08,0x04,0x04,0x78,  0x38,0x44,0x44,0x44,0x38,  0x7C,0x14,0x14,0x14,0x08,
+        0x08,0x14,0x14,0x18,0x7C,  0x7C,0x08,0x04,0x04,0x08,  0x48,0x54,0x54,0x54,0x20,  0x04,0x3F,0x44,0x40,0x20,
+        0x3C,0x40,0x40,0x20,0x7C,  0x1C,0x20,0x40,0x20,0x1C,  0x3C,0x40,0x30,0x40,0x3C,  0x44,0x28,0x10,0x28,0x44,
+        0x0C,0x50,0x50,0x50,0x3C,  0x44,0x64,0x54,0x4C,0x44,
+        // {  |  }  ~  DEL
+        0,0x08,0x36,0x41,0,  0,0,0x7F,0,0,  0,0x41,0x36,0x08,0,  0x02,0x01,0x02,0x04,0x02,  0x3E,0x49,0x49,0x49,0x3E
+    ]
+
+    func drawText(_ text: String, x: Int, y: Int, into img: inout [UInt8]) {
+        var cx = x
+        for ch in text.unicodeScalars {
+            let code = Int(ch.value)
+            guard code >= 32 && code <= 127 else { cx += 6; continue }
+            let base = (code - 32) * 5
+            guard base + 4 < font5x7.count else { cx += 6; continue }
+            for col in 0..<5 {
+                let colBits = font5x7[base + col]
+                for row in 0..<7 {
+                    let px = cx + col
+                    let py = y + row
+                    guard px >= 0 && px < W && py >= 0 && py < H else { continue }
+                    if (colBits >> row) & 1 == 1 {
+                        img[py * W + px] = 255
+                    }
+                }
+            }
+            cx += 6
+        }
+    }
+
     func golToImage() -> [UInt8] {
         var img = [UInt8](repeating: 0, count: W * H)
-        for y in 0..<H { for x in 0..<W {
+
+        // GoL cells — avoid border (1px) and text area (bottom 10px)
+        let yLimit = H - 11   // leave room for border + text row
+        for y in 1..<yLimit { for x in 1..<(W-1) {
             if grid[y][x] { img[y * W + x] = 255 }
         }}
+
+        // Always-on 1px border showing the full rendering surface
+        for x in 0..<W { img[x] = 255; img[(H-1)*W+x] = 255 }
+        for y in 0..<H { img[y*W] = 255; img[y*W+W-1] = 255 }
+
+        // Separator line above text area
+        let sepY = H - 10
+        for x in 1..<(W-1) { img[sepY*W+x] = 128 }
+
+        // Label text in the bottom strip
+        drawText("SED-E1  GAME OF LIFE  gen:\(golGeneration)", x: 8, y: H-9, into: &img)
+
         return img
     }
 
@@ -1002,7 +1051,6 @@ print(psk.hex())
         case "stop":
             golTimer?.invalidate(); golTimer = nil
             let black = [UInt8](repeating: 0, count: W * H)
-            lastDisplayGray = black; lastFrameSentAt = Date()
             sendCmd(buildLayoutDisplayCmd(grayscale: black), label: "STOP — black frame")
             log("⏹  Demo stopped. Type 'glider' to restart.", color: CLR_YLW)
 
@@ -1076,6 +1124,37 @@ print(psk.hex())
             }
 
         // ── Other ─────────────────────────────────────────────────────────────
+        case "camera", "cam":
+            let subcmd = parts.count > 1 ? String(parts[1]).lowercased() : "help"
+            switch subcmd {
+            case "still":
+                // RE STATUS: camera goes through Android Intents → MisiAha daemon → RFCOMM.
+                // Raw wire bytes unknown. Need HCI snoop from the SmartEyeglass APK.
+                // Attempting known camera-range commands as RE probes:
+                log("📷 Camera RE probe: trying 0xc3 mode commands...", color: CLR_CYN)
+                // 0xc3 = OpenAppMode — try camera mode value 4 (POWER_MODE_HIGH per SDK)
+                sendCmd([0xc3, 0x00, 0x01, 0x04], label: "SetPowerMode(HIGH/camera?)")
+                sendCmd([0xc3, 0x00, 0x01, 0x00], label: "SetPowerMode(0)")
+                log("⚠️  Camera bytes not yet reverse-engineered.", color: CLR_YLW)
+                log("   TODO: HCI snoop trace from com.sony.smarteyeglass APK", color: CLR_YLW)
+                log("   See: glasses-sdk/PROTOCOL_MAP.md §Camera", color: CLR_YLW)
+            case "stop":
+                log("📷 Camera stop (stub — no-op until bytes RE'd)", color: CLR_YLW)
+            default:
+                print("""
+                \(CLR_CYN)
+                ═══ CAMERA ═══
+                Status: RE in progress — wire bytes unknown
+                The camera is QVGA JPEG, accessed via Android Intents
+                on the device. From macOS over BT, we need the raw
+                RFCOMM command bytes which require an HCI snoop.
+
+                \(CLR_YLW)camera still\(CLR_RST)  — try RE probe commands
+                \(CLR_YLW)camera stop\(CLR_RST)   — stop camera (stub)
+                \(CLR_RST)Next step: adb shell btsnoopenable + capture from APK\(CLR_RST)
+                """)
+            }
+
         case "raw":
             let hexStr = parts.dropFirst().joined(separator: "")
             if let data = hexToData(hexStr) {
@@ -1089,7 +1168,6 @@ print(psk.hex())
 
         case "quit", "exit", "q":
             log("👋 Disconnecting...", color: CLR_YLW)
-            stopKeepAlive()
             if wifiServerFd >= 0 { Darwin.close(wifiServerFd) }
             if wifiClientFd >= 0 { Darwin.close(wifiClientFd) }
             gChannel?.close()
@@ -1106,8 +1184,6 @@ print(psk.hex())
     // ── GoL frame sender (BT or WiFi) ─────────────────────────────────────────
     func golSendFrame() {
         let gray = golToImage()
-        lastDisplayGray  = gray
-        lastFrameSentAt  = Date()
         let cmd  = buildLayoutDisplayCmd(grayscale: gray)
         if wifiActive && wifiClientFd >= 0 {
             sendViaTCP(cmd, label: "GOL-WiFi gen=\(golGeneration)")
@@ -1116,33 +1192,7 @@ print(psk.hex())
         }
     }
 
-    // ── Display keepalive ─────────────────────────────────────────────────────
-    func startKeepAlive() {
-        keepAliveTimer?.invalidate()
-        keepAliveTimer = Timer.scheduledTimer(withTimeInterval: keepAliveInterval,
-                                              repeats: true) { _ in
-            guard initPhase == 5 else { return }
-            guard Date().timeIntervalSince(lastFrameSentAt) >= keepAliveInterval - 0.5 else { return }
-            log("💤 Keepalive: re-activating display", color: CLR_YLW)
-            // Re-init layout so the display wakes from Android screen timeout
-            sendCmd([0xe0,0x00,0x0a,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00],
-                    label: "LayoutInit(keepalive)")
-            let frame = lastDisplayGray ?? [UInt8](repeating: 0, count: W * H)
-            let cmd   = buildLayoutDisplayCmd(grayscale: frame)
-            if wifiActive && wifiClientFd >= 0 {
-                sendViaTCP(cmd, label: "KEEPALIVE(WiFi)")
-            } else {
-                sendCmd(cmd, label: "KEEPALIVE(BT)")
-            }
-            lastFrameSentAt = Date()
-        }
-        RunLoop.current.add(keepAliveTimer!, forMode: .default)
-    }
 
-    func stopKeepAlive() {
-        keepAliveTimer?.invalidate()
-        keepAliveTimer = nil
-    }
 
 
 
@@ -1168,24 +1218,53 @@ print(psk.hex())
         log("🛸 Glider at (\(ox),\(oy))", color: CLR_MAG)
     }
 
+    // ── Gosper Glider Gun seed ────────────────────────────────────────────────
+    // The canonical 36-cell pattern that continuously produces gliders.
+    // Coordinates are (x,y) offsets from the gun's top-left corner.
+    let gosperGunCells: [(Int,Int)] = [
+        (24,0),
+        (22,1),(24,1),
+        (12,2),(13,2),(20,2),(21,2),(34,2),(35,2),
+        (11,3),(15,3),(20,3),(21,3),(34,3),(35,3),
+        (0,4),(1,4),(10,4),(16,4),(20,4),(21,4),
+        (0,5),(1,5),(10,5),(14,5),(16,5),(17,5),(22,5),(24,5),
+        (10,6),(16,6),(24,6),
+        (11,7),(15,7),
+        (12,8),(13,8)
+    ]
+
+    func placeGosperGun(ox: Int, oy: Int, flipX: Bool = false) {
+        let maxX = 35
+        for (dx, dy) in gosperGunCells {
+            let fx = flipX ? (maxX - dx) : dx
+            let x = ox + fx; let y = oy + dy
+            if x >= 1 && x < W-1 && y >= 1 && y < H-11 { grid[y][x] = true }
+        }
+    }
+
     func golStartGliderDemo() {
         golTimer?.invalidate(); golTimer = nil
-        golInit()                              // blank grid
-        spawnGlider()                          // first glider immediately
-        gliderElapsed = 0
-        gliderSpawnInterval = Double.random(in: 4...10)
+        golInit()
+
+        // Two guns facing each other across the display — creates rich collisions
+        placeGosperGun(ox: 10,  oy: 15)               // shoots right
+        placeGosperGun(ox: 373, oy: 55, flipX: true)  // shoots left
+
+        // R-pentomino near center for extra complexity (tiny but long-lived)
+        let cx = W/2; let cy = 40
+        for (dx,dy) in [(1,0),(2,0),(0,1),(1,1),(1,2)] {
+            let x = cx+dx; let y = cy+dy
+            if x >= 1 && x < W-1 && y >= 1 && y < H-11 { grid[y][x] = true }
+        }
+
+        golGeneration = 0
         golSendFrame()
-        // Step 2x and send every 0.4s (~2.5fps matches BT throughput)
-        // Spawn a new glider every 4-10s (random)
-        golTimer = Timer.scheduledTimer(withTimeInterval: 0.4, repeats: true) { _ in
-            golStep(); golStep()
+
+        // 30fps when WiFi active, ~2.5fps over BT
+        let interval: Double = (wifiActive && wifiClientFd >= 0) ? (1.0/30.0) : 0.4
+        golTimer = Timer.scheduledTimer(withTimeInterval: interval, repeats: true) { _ in
+            golStep()
             golGeneration += 1
-            gliderElapsed += 0.4
-            if gliderElapsed >= gliderSpawnInterval {
-                spawnGlider()
-                gliderElapsed = 0
-                gliderSpawnInterval = Double.random(in: 4...10)
-            }
             golSendFrame()
         }
         RunLoop.current.add(golTimer!, forMode: .default)
@@ -1286,8 +1365,6 @@ print(psk.hex())
                 if gDisplayMode == .test { printREPLHelp() }
                 else { printReadyBanner() }
             }
-            if autoWifi { triggerAutoWifi() }
-            startKeepAlive()
 
         case (4, 0x06):
             let level = data.count > 3 ? data[3] : 0
@@ -1303,8 +1380,6 @@ print(psk.hex())
                 if gDisplayMode == .test { printREPLHelp() }
                 else { printReadyBanner() }
             }
-            if autoWifi { triggerAutoWifi() }
-            startKeepAlive()
 
         case (4, 0x81):
             log("✨ P4: FotaStatus (ignoring — waiting for LevelNotification)", color: CLR_YLW)
@@ -1327,14 +1402,7 @@ print(psk.hex())
                 wifiPhase = 11
                 emitEvent("WIFI", ["event": "ENABLED", "state": Int(status)])
                 emitState()
-                if autoWifi {
-                    let ssid = config.wifiSSID
-                    let pass = config.wifiPSWD
-                    let ip   = getInterfaceIP("en0") ?? ""
-                    guard !ip.isEmpty else { log("⚠️ Auto WiFi: no en0 IP", color: CLR_YLW); return }
-                    log("🌐 Auto: connecting to '\(ssid)'...", color: CLR_CYN)
-                    wifiStartConnect(ssid: ssid, pass: pass, goIP: ip)
-                }
+                log("✅ Type 'wifi connect auto' to continue.", color: CLR_YLW)
             }
 
         case (_, 0x95): // WifiConnectivityStatus
@@ -1422,7 +1490,6 @@ print(psk.hex())
 
     gDelegate?.onClose = {
         log("Disconnected after \(rxCount) bytes", color: CLR_RED)
-        stopKeepAlive()
         gCapture?.close()
         exit(0)
     }

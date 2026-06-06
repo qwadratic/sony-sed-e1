@@ -30,7 +30,7 @@ node harness/dist/index.js --no-glasses
 | `s` | `wifi switch` | Activate WiFi data path (30fps) |
 | `b` | `wifi bt` | Fall back to BT data path |
 | `g` | `glider` | Start glider animation |
-| `x` | `stop` | Stop + black frame |
+| `x` | `stop` | Stop demo, black frame |
 | `G` | *(toggle)* | Toggle guardrail mode (ON = confirm all commands) |
 | `?` | `help` | Print REPL help |
 | `q` | `quit` | Graceful disconnect + exit |
@@ -45,7 +45,7 @@ node harness/dist/index.js --no-glasses
 
 | Command | Description |
 |---------|-------------|
-| `glider` | Start Game-of-Life glider animation |
+| `glider` | Start GoL demo: Gosper gun + R-pentomino, border, gen counter |
 | `stop` | Stop demo, send black frame |
 | `white` / `black` / `checker` / `stripes` / `cross` | Test patterns |
 | `wifi on` | Send WifiTurnOnReq (0x92) |
@@ -57,6 +57,8 @@ node harness/dist/index.js --no-glasses
 | `wifi bt` | WifiDPSwitchPathReq mode=BT (0x96 byte=0x00) |
 | `wifi setup` | Print step-by-step WiFi instructions |
 | `wifi ip` | Detect macOS WiFi IP (en0) |
+| `camera still` | Camera RE probe (bytes not yet known — see PROTOCOL_MAP §Camera) |
+| `camera stop` | Camera stop stub |
 | `raw HEX` | Send raw bytes, e.g. `raw e9 00 01 01` |
 | `help` | Full command list |
 | `quit` | Disconnect + exit |
