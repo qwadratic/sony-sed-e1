@@ -225,56 +225,32 @@ so the SSID is scannable without BT. The question is only the passphrase derivat
 
 ---
 
-## Camera — RE Status
+## Camera — COMPLETE ✅
 
-**Architecture**: Camera does NOT go directly over BT RFCOMM from the host.
+**RE complete 2026-06-06.** All CMD bytes extracted from `classes.dex` via Python DEX parser.  
+See `glasses-sdk/CAMERA_PROTOCOL.md` for full protocol and payload formats.
 
-The pipeline on Android:
+**Architecture (our simplified model):**  
+We own the full stack. No Android middleware. Direct RFCOMM → SED-E1 hardware.
+
+### Camera CMD bytes
+
+| Byte | Class | Direction | Description |
+|------|-------|-----------|-------------|
+| `0xce` | `OpenAppCameraMode` | TX | Set mode, resolution, quality, fps |
+| `0xb4` | `OpenAppCameraCaptureRequest` | TX | Trigger capture (no payload) |
+| `0xb5` | `OpenAppCameraCaptureResponse` | RX | Metadata: status, format, total_size |
+| `0xb6` | `OpenAppCameraCaptureData` | RX | JPEG chunk: seq_num, data_len, data |
+| `0xb7` | `OpenAppCameraCaptureDataDone` | RX | Transfer complete: status, count, total |
+| `0xb8` | `OpenAppCameraCaptureDataCancel` | TX | Abort transfer |
+| `0xf1` | `OpenAppCameraCaptureDataAck` | TX | ACK each 0xb6 chunk |
+
+### REPL commands
+
 ```
-App → sendBroadcast(CAMERA_SET_MODE_INTENT) → com.sony.smarteyeglass daemon (MisiAha)
-                                                      ↓ RFCOMM to glasses
-Frames back ← Unix socket (EXTRA_CAMERA_VIDEO_SOCKET_NAME) ← MisiAha ← glasses
-```
-
-From macOS over BT, we send to MisiAha which relays to glasses. The raw RFCOMM
-command bytes for camera are embedded in the MisiAha APK and are **not yet known**.
-
-### What we know (from SDK source)
-
-| Intent constant | Value |
-|----------------|-------|
-| `CAMERA_SET_MODE_INTENT` | `com.sony.smarteyeglass.control.CAMERA_SET_MODE` |
-| `CAMERA_START_INTENT` | `com.sony.smarteyeglass.control.CAMERA_START` |
-| `CAMERA_STOP_INTENT` | `com.sony.smarteyeglass.control.CAMERA_STOP` |
-| `CAMERA_CAPTURE_STILL_INTENT` | `com.sony.smarteyeglass.control.CAMERA_CAPTURE_STILL` |
-
-| Mode | Value |
-|------|-------|
-| Still | 0 |
-| Still-to-file | 1 |
-| JPEG stream low rate | 2 |
-| JPEG stream high rate | 3 |
-
-| Resolution | Value |
-|-----------|-------|
-| 3MP | 0 |
-| 1MP | 1 |
-| VGA | 4 |
-| QVGA | 6 (used for streaming) |
-
-### Next step to RE camera bytes
-
-```bash
-# On an Android device with glasses connected:
-adb shell setprop persist.bluetooth.btsnoopenable true
-# Trigger camera from SmartEyeglass app
-# Pull log:
-adb pull /sdcard/btsnoop_hci.log
-# Open in Wireshark → filter RFCOMM → find camera-range commands
+camera still [res]   — capture still photo (res: 3m sxga vga qvga ...)
+camera stream [res]  — start JPEG stream (default: qvga)
+camera stop          — send 0xb8 cancel
 ```
 
-Frames arrive as JPEG via the `EXTRA_CAMERA_VIDEO_SOCKET_NAME` Unix socket.
-From macOS via ADB forwarding this would be the fastest path:
-```bash
-adb forward tcp:7002 localabstract:com.sony.smarteyeglass.MONITOR_SOCKET
-```
+JPEG saved to `/tmp/glasses-capture-<timestamp>.jpg`

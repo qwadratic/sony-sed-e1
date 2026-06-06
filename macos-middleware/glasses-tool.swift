@@ -360,6 +360,12 @@ func cmdConnect(address: String, channel: BluetoothRFCOMMChannelID = 0,
         ])
     }
 
+    // ── Camera capture state ─────────────────────────────────────────────────
+    var cameraExpectedBytes = 0      // from 0xb5 CaptureResponse
+    var cameraAccum = Data()         // accumulating JPEG chunks from 0xb6
+    var cameraFrameCount = 0         // 0xb6 frames received
+    var cameraCapturing = false
+
     // ── RFCOMM reassembly buffer ──────────────────────────────────────────────
     // Multiple wire frames can arrive in one RFCOMM chunk. We buffer incomplete
     // data here and parse complete frames [cmdId:1B][len:2B][payload:lenB] one
@@ -1143,33 +1149,57 @@ print(psk.hex())
 
         // ── Other ─────────────────────────────────────────────────────────────
         case "camera", "cam":
+            // Camera bytes fully RE'd from DEX bytecode — see glasses-sdk/CAMERA_PROTOCOL.md
+            // Protocol: 0xce(mode) → 0xb4(request) → 0xb5(response) → 0xb6(chunks) → 0xb7(done)
             let subcmd = parts.count > 1 ? String(parts[1]).lowercased() : "help"
+            let resArg  = parts.count > 2 ? String(parts[2]).lowercased() : "sxga"
+            let resMap: [String: UInt8] = [
+                "3m":0, "3mp":0, "sxga":1, "xga":2, "svga":3, "vga":4, "hvga":5, "qvga":6, "qqvga":7
+            ]
             switch subcmd {
             case "still":
-                // RE STATUS: camera goes through Android Intents → MisiAha daemon → RFCOMM.
-                // Raw wire bytes unknown. Need HCI snoop from the SmartEyeglass APK.
-                // Attempting known camera-range commands as RE probes:
-                log("📷 Camera RE probe: trying 0xc3 mode commands...", color: CLR_CYN)
-                // 0xc3 = OpenAppMode — try camera mode value 4 (POWER_MODE_HIGH per SDK)
-                sendCmd([0xc3, 0x00, 0x01, 0x04], label: "SetPowerMode(HIGH/camera?)")
-                sendCmd([0xc3, 0x00, 0x01, 0x00], label: "SetPowerMode(0)")
-                log("⚠️  Camera bytes not yet reverse-engineered.", color: CLR_YLW)
-                log("   TODO: HCI snoop trace from com.sony.smarteyeglass APK", color: CLR_YLW)
-                log("   See: glasses-sdk/PROTOCOL_MAP.md §Camera", color: CLR_YLW)
+                let res = resMap[resArg] ?? 1  // default SXGA (1.3MP)
+                log("📷 Camera: SetMode(STILL res=\(resArg)) + CaptureRequest...", color: CLR_CYN)
+                if cameraCapturing {
+                    log("⚠️ Camera already capturing — send 'camera stop' first", color: CLR_YLW)
+                    return
+                }
+                // 0xce: [mode=0(STILL), res, quality=1(STANDARD), fps=0]
+                sendCmd([0xce, 0x00, 0x04, 0x00, res, 0x01, 0x00], label: "CameraMode(STILL,\(resArg))")
+                // Small delay then trigger capture
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                    sendCmd([0xb4, 0x00, 0x00], label: "CameraCaptureRequest")
+                    log("   Waiting for 0xb5 CaptureResponse...", color: CLR_YLW)
+                    log("   JPEG will be saved to /tmp/glasses-capture-<ts>.jpg", color: CLR_YLW)
+                }
+            case "stream":
+                let res = resMap[resArg] ?? 6  // default QVGA for stream
+                log("📷 Camera: SetMode(MOVIE res=\(resArg)) + CaptureRequest (stream)...", color: CLR_CYN)
+                sendCmd([0xce, 0x00, 0x04, 0x01, res, 0x01, 0x00], label: "CameraMode(MOVIE,\(resArg))")
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                    sendCmd([0xb4, 0x00, 0x00], label: "CameraCaptureRequest")
+                    log("   Streaming mode started. Type 'camera stop' to cancel.", color: CLR_YLW)
+                }
             case "stop":
-                log("📷 Camera stop (stub — no-op until bytes RE'd)", color: CLR_YLW)
+                log("📷 Camera: sending CaptureDataCancel (0xb8)...", color: CLR_YLW)
+                sendCmd([0xb8, 0x00, 0x01, 0x00], label: "CameraCaptureDataCancel")
+                cameraCapturing = false
+                cameraAccum = Data()
             default:
                 print("""
                 \(CLR_CYN)
-                ═══ CAMERA ═══
-                Status: RE in progress — wire bytes unknown
-                The camera is QVGA JPEG, accessed via Android Intents
-                on the device. From macOS over BT, we need the raw
-                RFCOMM command bytes which require an HCI snoop.
+                ═══ CAMERA ═══  [bytes RE'd from DEX — fully implemented]
+                See glasses-sdk/CAMERA_PROTOCOL.md for full protocol.
 
-                \(CLR_YLW)camera still\(CLR_RST)  — try RE probe commands
-                \(CLR_YLW)camera stop\(CLR_RST)   — stop camera (stub)
-                \(CLR_RST)Next step: adb shell btsnoopenable + capture from APK\(CLR_RST)
+                \(CLR_YLW)camera still [res]\(CLR_RST)   — take still photo
+                \(CLR_YLW)camera stream [res]\(CLR_RST)  — start JPEG stream
+                \(CLR_YLW)camera stop\(CLR_RST)          — cancel capture
+
+                Resolutions: 3m sxga(default) xga svga vga hvga qvga qqvga
+                Output: /tmp/glasses-capture-<timestamp>.jpg
+
+                Protocol: 0xce(mode) → 0xb4(req) → 0xb5(resp) → 0xb6(chunks+ACK) → 0xb7(done)
+                \(CLR_RST)
                 """)
             }
 
@@ -1295,9 +1325,14 @@ print(psk.hex())
         // Emit RX event for every incoming command
         let rxNames: [UInt8: String] = [
             0x01: "ACK", 0x02: "NAK", 0x05: "PING", 0x06: "LevelNotification",
-            0x08: "VersionResponse", 0x0a: "ProtocolVersion", 0x72: "SettingsStatusResponse",
+            0x08: "VersionResponse", 0x0a: "ProtocolVersion", 0x31: "OpenAppStartResponse",
+            0x36: "OpenAppImageAck", 0x3a: "Acceleration", 0x3b: "LightSensor",
+            0x3e: "BatterySensor", 0x72: "SettingsStatusResponse",
             0x81: "FotaStatus", 0x91: "WifiStatusRes", 0x95: "WifiConnectivityStatus",
             0x96: "WifiDPSwitchPathReq", 0x97: "WifiDPSwitchPathRes",
+            0xb5: "CameraCaptureResponse", 0xb6: "CameraCaptureData",
+            0xb7: "CameraCaptureDataDone", 0xbb: "RotationVector",
+            0xbc: "Gyro", 0xbd: "Magnetometer",
             0xe5: "LayoutEventNotify", 0xe8: "ImageAck", 0xff: "SyncResponse"
         ]
         let rxCmdHex = String(format: "0x%02x", cmdId)
@@ -1442,6 +1477,72 @@ print(psk.hex())
                 log("⬅️ Glasses switched us back to BT path.", color: CLR_YLW)
             }
 
+        // ── Camera responses (any phase >= 5) ────────────────────────────────────
+        case (_, 0xb5) where initPhase >= 5: // OpenAppCameraCaptureResponse
+            // payload: [status(1), format(1), jpeg_size(4 LE), field4(4 LE)] = 10 bytes
+            if data.count >= 13 {
+                let status = data[3]
+                let format = data[4]
+                let jpegSize = Int(data[5]) | (Int(data[6]) << 8) | (Int(data[7]) << 16) | (Int(data[8]) << 24)
+                if status == 0 {
+                    cameraExpectedBytes = jpegSize
+                    cameraAccum = Data()
+                    cameraFrameCount = 0
+                    cameraCapturing = true
+                    log("📷 CaptureResponse: status=OK fmt=\(format) size=\(jpegSize)B", color: CLR_GRN)
+                    emitEvent("CAMERA", ["event": "CAPTURE_RESPONSE", "status": 0, "jpeg_size": jpegSize])
+                } else {
+                    cameraCapturing = false
+                    log("📷 CaptureResponse: ERROR status=\(status)", color: CLR_RED)
+                    emitEvent("CAMERA", ["event": "CAPTURE_ERROR", "status": Int(status)])
+                }
+            } else {
+                log("📷 CaptureResponse: short payload (\(data.count)B)", color: CLR_YLW)
+            }
+
+        case (_, 0xb6) where initPhase >= 5: // OpenAppCameraCaptureData
+            // payload: [frame_num(1), data_len(2 LE), data(data_len bytes)]
+            guard data.count >= 6 else {
+                log("📷 CaptureData: too short (\(data.count)B)", color: CLR_YLW)
+                break
+            }
+            let frameNum = data[3]
+            let chunkLen = Int(data[4]) | (Int(data[5]) << 8)
+            let chunkStart = data.index(data.startIndex, offsetBy: 6)
+            let chunkEnd   = data.index(chunkStart, offsetBy: chunkLen, limitedBy: data.endIndex) ?? data.endIndex
+            let chunkData  = data[chunkStart..<chunkEnd]
+            cameraAccum.append(chunkData)
+            cameraFrameCount += 1
+            let pct = cameraExpectedBytes > 0 ? Int(100 * cameraAccum.count / cameraExpectedBytes) : 0
+            log("📷 CaptureData[\(frameNum)] \(chunkData.count)B accumulated=\(cameraAccum.count)/\(cameraExpectedBytes) (\(pct)%)", color: CLR_CYN)
+            // ACK immediately: 0xf1 [frame_num]
+            sendCmd([0xf1, 0x00, 0x01, frameNum], label: "CaptureDataAck[\(frameNum)]")
+            emitEvent("CAMERA", ["event": "CHUNK", "frame": Int(frameNum), "bytes": chunkData.count, "total": cameraAccum.count])
+
+        case (_, 0xb7) where initPhase >= 5: // OpenAppCameraCaptureDataDone
+            // payload: [status(1), count(1), total_size(4 LE)] = 6 bytes
+            let status = data.count > 3 ? data[3] : 0xFF
+            let framesDeclared = data.count > 4 ? data[4] : 0
+            let totalSize = data.count >= 9 ?
+                Int(data[5]) | (Int(data[6]) << 8) | (Int(data[7]) << 16) | (Int(data[8]) << 24) : 0
+            cameraCapturing = false
+            log("📷 CaptureDataDone: status=\(status) frames=\(framesDeclared) total=\(totalSize)B accumulated=\(cameraAccum.count)B", color: CLR_GRN)
+            if status == 0 && !cameraAccum.isEmpty {
+                let ts = Int(Date().timeIntervalSince1970)
+                let outPath = "/tmp/glasses-capture-\(ts).jpg"
+                do {
+                    try cameraAccum.write(to: URL(fileURLWithPath: outPath))
+                    log("✅ JPEG saved: \(outPath) (\(cameraAccum.count)B)", color: CLR_GRN)
+                    emitEvent("CAMERA", ["event": "SAVED", "path": outPath, "bytes": cameraAccum.count])
+                } catch {
+                    log("❌ Failed to save JPEG: \(error)", color: CLR_RED)
+                }
+            } else if status != 0 {
+                log("📷 Capture failed (status=\(status))", color: CLR_RED)
+                emitEvent("CAMERA", ["event": "DONE_ERROR", "status": Int(status)])
+            }
+            cameraAccum = Data()
+
         // ── Phase 5 general ───────────────────────────────────────────────────
         case (5, _):
             let cmdName: String
@@ -1453,6 +1554,9 @@ print(psk.hex())
             case 0x32: cmdName = "TOUCH"
             case 0x36: cmdName = "IMAGE_ACK"
             case 0x3c: cmdName = "KEY_EVENT"
+            case 0xb5: cmdName = "CAMERA_CAPTURE_RESPONSE"
+            case 0xb6: cmdName = "CAMERA_CAPTURE_DATA"
+            case 0xb7: cmdName = "CAMERA_CAPTURE_DONE"
             default: cmdName = String(format: "CMD_0x%02x", cmdId)
             }
             log("   [\(cmdName)]", color: CLR_CYN)
