@@ -1,4 +1,4 @@
-import type { GlassesEvent, StateEvent, WifiEvent } from "./events.js";
+import type { GlassesEvent, StateEvent, WifiEvent, CameraEvent } from "./events.js";
 
 export interface ProtocolState {
   phase: number;
@@ -9,6 +9,10 @@ export interface ProtocolState {
   framesSent: number;
   compressSamples: number[];
   avgCompressionRatio: number;
+  cameraActive: boolean;
+  cameraBytes: number;
+  cameraPct: number;
+  lastCapturePath: string | null;
   lastEvent?: GlassesEvent;
 }
 
@@ -39,6 +43,10 @@ export function makeInitialState(): ProtocolState {
     framesSent: 0,
     compressSamples: [],
     avgCompressionRatio: 0,
+    cameraActive: false,
+    cameraBytes: 0,
+    cameraPct: 0,
+    lastCapturePath: null,
   };
 }
 
@@ -71,6 +79,21 @@ export function applyEvent(state: ProtocolState, event: GlassesEvent): ProtocolS
     const samples = [...state.compressSamples, event.ratio].slice(-50);
     next.compressSamples = samples;
     next.avgCompressionRatio = samples.reduce((a, b) => a + b, 0) / samples.length;
+  } else if (event.type === "CAMERA") {
+    const c = event as CameraEvent;
+    switch (c.event) {
+      case "SAVED":
+        next.cameraActive = false;
+        next.lastCapturePath = c.path ?? null;
+        break;
+      case "CAPTURE_RESPONSE":
+        next.cameraActive = true;
+        next.cameraBytes = c.jpeg_size ?? 0;
+        break;
+      case "CHUNK":
+        next.cameraPct = c.pct ?? 0;
+        break;
+    }
   }
 
   return next;

@@ -3,7 +3,7 @@ import { existsSync } from "fs";
 import readline from "readline";
 import { EventEmitter } from "events";
 
-export type GlassesEventType = "TX" | "RX" | "STATE" | "LOG" | "WIFI" | "COMPRESS";
+export type GlassesEventType = "TX" | "RX" | "STATE" | "LOG" | "WIFI" | "COMPRESS" | "CAMERA";
 
 export interface TXEvent {
   ts: number; type: "TX";
@@ -32,7 +32,19 @@ export interface CompressEvent {
   raw: number; compressed: number; ratio: number; ms: number;
 }
 
-export type GlassesEvent = TXEvent | RXEvent | StateEvent | LogEvent | WifiEvent | CompressEvent;
+export interface CameraEvent {
+  type: "CAMERA";
+  event: string;
+  ts: number;
+  path?: string;
+  bytes?: number;
+  status?: number;
+  jpeg_size?: number;
+  seq?: number;
+  pct?: number;
+}
+
+export type GlassesEvent = TXEvent | RXEvent | StateEvent | LogEvent | WifiEvent | CompressEvent | CameraEvent;
 
 export class EventTailer extends EventEmitter {
   private offset = 0;

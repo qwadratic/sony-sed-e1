@@ -138,7 +138,7 @@ tui.addInputListener((data) => {
 
   const keyMap: Record<string, string> = {
     w: "wifi on", c: "wifi connect auto", s: "wifi switch",
-    b: "wifi bt", g: "glider", x: "stop", "?": "help",
+    b: "wifi bt", g: "glider", p: "camera still qvga", x: "stop", "?": "help",
   };
 
   if (data === "G") {

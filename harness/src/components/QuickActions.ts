@@ -7,6 +7,7 @@ const SHORTCUTS: Array<[string, string]> = [
   ["s", "switch"],
   ["b", "bt back"],
   ["g", "glider"],
+  ["p", "photo"],
   ["x", "stop"],
   ["G", "guardrail"],
   ["?", "help"],
