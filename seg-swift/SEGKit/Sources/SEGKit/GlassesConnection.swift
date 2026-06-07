@@ -24,6 +24,7 @@ public final class GlassesConnection: @unchecked Sendable {
     public let camera: CameraSubsystem
     public let sensors: SensorSubsystem
     public let input: InputSubsystem
+    public let wifi: WifiSubsystem
     public let eventLog = EventLogger()
     
     public weak var delegate: GlassesDelegate?
@@ -112,6 +113,10 @@ public final class GlassesConnection: @unchecked Sendable {
         bridge.onConnected = {
             // Channel is now open — handshake begins automatically
             // when glasses send ProtocolVersion (0x0a)
+        }
+
+        bridge.onConnected = { [weak self] in
+            self?.attemptWifiUpgrade()
         }
 
         bridge.onDisconnected = { [weak self] in
@@ -251,18 +256,57 @@ public final class GlassesConnection: @unchecked Sendable {
         return result
     }
     
+    /// Load WiFi credentials from a .env file (SSID=... PSWD=...)
+    public func loadWifiCredentials(from path: String) {
+        guard let content = try? String(contentsOfFile: path, encoding: .utf8) else { return }
+        for line in content.split(separator: "\n") {
+            let parts = line.split(separator: "=", maxSplits: 1)
+            guard parts.count == 2 else { continue }
+            let key = parts[0].trimmingCharacters(in: .whitespaces)
+            let val = parts[1].trimmingCharacters(in: .whitespaces)
+            switch key {
+            case "SSID": wifi.ssid = val
+            case "PSWD": wifi.passphrase = val
+            default: break
+            }
+        }
+    }
+
+    /// Attempt WiFi upgrade after BT handshake. Call after phase=ready.
+    internal func attemptWifiUpgrade() {
+        guard !wifi.ssid.isEmpty else { return }
+        Task {
+            // Wait for phase=ready
+            for _ in 0..<100 {
+                try? await Task.sleep(for: .milliseconds(200))
+                if case .ready = phase { break }
+            }
+            guard case .ready = phase else { return }
+
+            eventLog.debug("Attempting WiFi upgrade...", minLevel: .normal)
+            let success = await wifi.upgrade()
+            if success {
+                eventLog.debug("WiFi upgrade successful — data path active", minLevel: .normal)
+            } else {
+                eventLog.debug("WiFi upgrade failed — staying on BT", minLevel: .normal)
+            }
+        }
+    }
+
     public init() {
         let transport = TransportActor()
         let display = DisplaySubsystem(transport: transport)
         let camera = CameraSubsystem(transport: transport)
         let sensors = SensorSubsystem(transport: transport)
         let input = InputSubsystem()
+        let wifi = WifiSubsystem(transport: transport)
         
         self.transport = transport
         self.display = display
         self.camera = camera
         self.sensors = sensors
         self.input = input
+        self.wifi = wifi
         self.protocol_sm = ProtocolActor(
             transport: transport,
             display: display,

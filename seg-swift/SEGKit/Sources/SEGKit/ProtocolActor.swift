@@ -145,6 +145,25 @@ internal actor ProtocolActor {
             let reading = sensors.handleAccelerometer(frame.payload)  // same SIMD3 format
             connection?.delegate?.glasses(connection!, didReceiveSensorData: reading)
             
+        // ── WiFi responses (any phase) ─────────────────────────
+        case (_, 0x91):  // WifiStatusRes
+            let status = frame.payload.first ?? 0
+            connection?.eventLog.debug("WifiStatus: \(status) (0=DISABLING 1=DISABLED 2=ENABLING 3=ENABLED)", minLevel: .normal)
+            if status == 3 {  // ENABLED
+                connection?.wifi.state = .enabled
+            }
+
+        case (_, 0x95):  // WifiConnectivityStatus
+            let status = frame.payload.first ?? 0
+            connection?.eventLog.debug("WifiConnectivity: \(status) (0=DISCONNECTING 1=DISCONNECTED 2=CONNECTING 3=CONNECTED)", minLevel: .normal)
+
+        case (_, 0x97):  // WifiDPSwitchPathRes
+            let path = frame.payload.first ?? 0
+            connection?.eventLog.debug("WifiPathSwitch: \(path == 1 ? "WIFI" : "BT")", minLevel: .normal)
+            if path == 1 {
+                connection?.wifi.state = .active
+            }
+
         default:
             break  // Unknown or out-of-phase frame
         }

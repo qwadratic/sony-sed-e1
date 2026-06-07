@@ -42,6 +42,14 @@ setbuf(stdout, nil)
 app.glasses.eventLog.level = debugLevel
 print("Log level: \(debugLevel)")
 
+// Parse --wifi-env PATH (load WiFi credentials for BT→WiFi upgrade)
+if let idx = args.firstIndex(of: "--wifi-env"), idx + 1 < args.count {
+    app.glasses.loadWifiCredentials(from: args[idx + 1])
+} else {
+    // Try default .env path
+    app.glasses.loadWifiCredentials(from: "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/macos-middleware/.env")
+}
+
 Task {
     if let host = localHost {
         print("Connecting to \(host):\(localPort)...")
