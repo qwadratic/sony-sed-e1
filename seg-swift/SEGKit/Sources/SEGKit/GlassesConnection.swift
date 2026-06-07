@@ -200,15 +200,42 @@ public final class GlassesConnection: @unchecked Sendable {
         return nil
     }
 
-    /// List all paired Bluetooth devices. Returns [(name, address)].
-    public static func listPairedDevices() -> [(name: String, address: String)] {
+    /// Paired device info with signal strength for online detection.
+    public struct PairedDevice {
+        public let name: String
+        public let address: String
+        public let rssi: Int        // 0 = not broadcasting, negative = signal (closer to 0 = stronger)
+        public let isGlasses: Bool  // class 7/5 = Wearable/Glasses
+        public let isConnected: Bool
+        
+        /// Device appears to be powered on and nearby.
+        public var isOnline: Bool { rssi < 0 }
+    }
+
+    /// List all paired Bluetooth devices with signal strength.
+    /// Sorted: online glasses first (by signal strength), then other online, then offline.
+    public static func listPairedDevices() -> [PairedDevice] {
         guard let devices = IOBluetoothDevice.pairedDevices() as? [IOBluetoothDevice] else {
             return []
         }
-        return devices.compactMap { d in
+        var result = devices.compactMap { d -> PairedDevice? in
             guard let addr = d.addressString else { return nil }
-            return (name: d.name ?? "(unknown)", address: addr)
+            let name = d.name ?? "(unknown)"
+            let rssi = Int(d.rawRSSI())
+            let isGlasses = d.deviceClassMajor == 7 && d.deviceClassMinor == 5
+            return PairedDevice(
+                name: name, address: addr, rssi: rssi,
+                isGlasses: isGlasses, isConnected: d.isConnected()
+            )
         }
+        // Sort: online glasses (strongest first) → online others → offline
+        result.sort { a, b in
+            if a.isGlasses != b.isGlasses { return a.isGlasses }
+            if a.isOnline != b.isOnline { return a.isOnline }
+            if a.isOnline && b.isOnline { return a.rssi > b.rssi } // closer to 0 = stronger
+            return false
+        }
+        return result
     }
     
     public init() {

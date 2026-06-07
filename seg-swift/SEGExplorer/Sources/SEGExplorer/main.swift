@@ -47,21 +47,38 @@ Task {
             selectedAddress = addr
         } else {
             print("Paired Bluetooth devices:")
+            print("")
             for (i, d) in allDevices.enumerated() {
-                let tag = (d.name.lowercased().contains("smart") ||
-                           d.name.lowercased().contains("sed")) ? " ← glasses?" : ""
-                print("  [\(i)] \(d.name)  [\(d.address)]\(tag)")
+                let icon: String
+                if d.isGlasses {
+                    icon = d.isOnline ? "🕶️" : "💤"
+                } else {
+                    icon = d.isOnline ? "🟢" : "⚪"
+                }
+                let signal = d.isOnline ? "rssi:\(d.rssi)dBm" : "offline"
+                let tag = d.isGlasses ? " ← SmartEyeglass" : ""
+                print("  [\(i)] \(icon) \(d.name)  [\(d.address)]  \(signal)\(tag)")
             }
-            print("Select device [0-\(allDevices.count - 1)]: ", terminator: "")
-            fflush(stdout)
-            guard let line = readLine(),
-                  let idx = Int(line.trimmingCharacters(in: .whitespaces)),
-                  idx >= 0, idx < allDevices.count else {
-                print("Invalid selection.")
-                exit(1)
+            print("")
+            
+            // Auto-select if exactly one glasses device is online
+            let onlineGlasses = allDevices.enumerated().filter { $0.element.isGlasses && $0.element.isOnline }
+            if onlineGlasses.count == 1 {
+                let (idx, d) = onlineGlasses[0]
+                print("Auto-selecting only online glasses: [\(idx)] \(d.name)")
+                selectedAddress = d.address
+            } else {
+                print("Select device [0-\(allDevices.count - 1)]: ", terminator: "")
+                fflush(stdout)
+                guard let line = readLine(),
+                      let idx = Int(line.trimmingCharacters(in: .whitespaces)),
+                      idx >= 0, idx < allDevices.count else {
+                    print("Invalid selection.")
+                    exit(1)
+                }
+                selectedAddress = allDevices[idx].address
+                print("→ \(allDevices[idx].name) [\(selectedAddress)]")
             }
-            selectedAddress = allDevices[idx].address
-            print("→ \(allDevices[idx].name) [\(selectedAddress)]")
         }
 
         do {
