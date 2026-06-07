@@ -37,6 +37,8 @@ internal actor ProtocolActor {
         self.connection = conn
     }
 
+    private var fotaTimeoutTask: Task<Void, Never>?
+
     func start() async {
         await transport.setFrameHandler { [weak self] frame in
             await self?.handle(frame)
@@ -44,6 +46,11 @@ internal actor ProtocolActor {
     }
     
     private func handle(_ frame: WireFrame) async {
+        // Ignore 0x06 LevelNotification and 0xe5 LayoutEventNotify during handshake
+        if phase != .ready && (frame.cmdId == 0x06 || frame.cmdId == 0xe5) {
+            return
+        }
+
         switch (phase, frame.cmdId) {
             
         // ── Handshake ────────────────────────────────────────
@@ -64,15 +71,17 @@ internal actor ProtocolActor {
                 label: "NewHostApp"
             )
             notifyPhase()
+            // Start 5s timeout — emulator may never send FotaStatus
+            fotaTimeoutTask = Task { [weak self] in
+                try? await Task.sleep(for: .seconds(5))
+                await self?.fotaTimeout()
+            }
             
         case (.waitFota, 0x81):
-            phase = .waitOpenApp
-            await transport.send([0xff, 0x00, 0x00], label: "SyncResponse")
-            // Also send OpenAppStartRequest
-            await transport.send([0x30, 0x00, 0x00], label: "OpenAppStartReq")
-            notifyPhase()
+            fotaTimeoutTask?.cancel()
+            await advanceToOpenApp()
             
-        case (.waitOpenApp, 0x31), (.waitOpenApp, 0x06):
+        case (.waitOpenApp, 0x31):
             phase = .ready
             await display.initialize()
             notifyPhase()
@@ -116,6 +125,30 @@ internal actor ProtocolActor {
         }
     }
     
+    private func fotaTimeout() async {
+        guard phase == .waitFota else { return }
+        await advanceToOpenApp()
+    }
+
+    private func advanceToOpenApp() async {
+        phase = .waitOpenApp
+        await transport.send([0xff, 0x00, 0x00], label: "SyncResponse")
+        await transport.send([0x30, 0x00, 0x00], label: "OpenAppStartReq")
+        notifyPhase()
+        // Emulator may not send 0x31 either — auto-advance after 3s
+        Task { [weak self] in
+            try? await Task.sleep(for: .seconds(3))
+            await self?.openAppTimeout()
+        }
+    }
+
+    private func openAppTimeout() async {
+        guard phase == .waitOpenApp else { return }
+        phase = .ready
+        await display.initialize()
+        notifyPhase()
+    }
+
     private func notifyPhase() {
         let cp: ConnectionPhase
         switch phase {
