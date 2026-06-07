@@ -16,6 +16,7 @@ final class ExplorerApp: GlassesDelegate, @unchecked Sendable {
         CameraCaptureDemo(),
         CameraStreamDemo(),
         ARDemo(),
+        AudioDemo(),
     ]
     
     private var menuIndex = 0
@@ -59,8 +60,8 @@ final class ExplorerApp: GlassesDelegate, @unchecked Sendable {
                 switch event {
                 case .tap:
                     await demo.onTap()
-                case .swipeLeft, .swipeRight, .swipeUp, .swipeDown:
-                    if case .swipeDown = event {
+                case .swipeLeft, .swipeRight, .backButton:
+                    if case .backButton = event {
                         // Swipe down exits demo
                         await exitDemo()
                     } else {
@@ -77,10 +78,10 @@ final class ExplorerApp: GlassesDelegate, @unchecked Sendable {
                 switch event {
                 case .tap:
                     await enterDemo(menuIndex)
-                case .swipeUp:
+                case .jogRotateCCW:
                     menuIndex = (menuIndex - 1 + demos.count) % demos.count
                     await renderMenu()
-                case .swipeDown:
+                case .jogRotateCW:
                     menuIndex = (menuIndex + 1) % demos.count
                     await renderMenu()
                 default: break
@@ -143,12 +144,12 @@ final class ExplorerApp: GlassesDelegate, @unchecked Sendable {
 
     func startREPL() {
         DispatchQueue.global(qos: .userInteractive).async { [self] in
-            print("REPL: [0-7] demo, [t] tap, [m] menu, [d] debug level, [q] quit")
+            print("REPL: [0-8] demo, [t] tap, [m] menu, [d] debug level, [q] quit")
             while let line = readLine() {
                 let cmd = line.trimmingCharacters(in: .whitespaces)
                 Task {
                     switch cmd {
-                    case "0"..."7":
+                    case "0"..."8":
                         if let idx = Int(cmd) {
                             if self.activeDemo != nil { await self.exitDemo() }
                             await self.enterDemo(idx)
@@ -166,7 +167,7 @@ final class ExplorerApp: GlassesDelegate, @unchecked Sendable {
                         await self.glasses.disconnect()
                         exit(0)
                     default:
-                        print("Unknown: \(cmd). [0-7] demo, [t] tap, [m] menu, [d] debug, [q] quit")
+                        print("Unknown: \(cmd). [0-8] demo, [t] tap, [m] menu, [d] debug, [q] quit")
                     }
                 }
             }

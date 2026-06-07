@@ -189,20 +189,17 @@ final class SEGKitTests: XCTestCase {
         // cmdId=0x06, empty payload → .tap
         XCTAssertEqual(input.parseEvent(cmdId: 0x06, payload: Data()), .tap)
         
-        // cmdId=0xe5, payload=[0x00] → .tap
-        // Note: current guard requires count>=2; single-byte tap/longPress may fail
-        let tapResult = input.parseEvent(cmdId: 0xe5, payload: Data([0x00]))
-        XCTAssertEqual(tapResult, .tap, "0xe5 with action=0x00 should be .tap")
+        // Real event types from LayoutEventType.smali:
+        // 0x12=TouchTap, 0x13=TouchLongTap, 0x14=SwipeLeft, 0x15=SwipeRight
+        XCTAssertEqual(input.parseEvent(cmdId: 0xe5, payload: Data([0x12, 0x00, 0x00, 0x00])), .tap)
+        XCTAssertEqual(input.parseEvent(cmdId: 0xe5, payload: Data([0x13, 0x00, 0x00, 0x00])), .longPress)
+        XCTAssertEqual(input.parseEvent(cmdId: 0xe5, payload: Data([0x14, 0x00, 0x00, 0x00])), .swipeLeft)
+        XCTAssertEqual(input.parseEvent(cmdId: 0xe5, payload: Data([0x15, 0x00, 0x00, 0x00])), .swipeRight)
         
-        // cmdId=0xe5, payload=[0x01] → .longPress
-        let longResult = input.parseEvent(cmdId: 0xe5, payload: Data([0x01]))
-        XCTAssertEqual(longResult, .longPress, "0xe5 with action=0x01 should be .longPress")
-        
-        // cmdId=0xe5, payload=[0x03, 0x01] → .swipeLeft
-        XCTAssertEqual(input.parseEvent(cmdId: 0xe5, payload: Data([0x03, 0x01])), .swipeLeft)
-        
-        // cmdId=0xe5, payload=[0x03, 0x02] → .swipeRight
-        XCTAssertEqual(input.parseEvent(cmdId: 0xe5, payload: Data([0x03, 0x02])), .swipeRight)
+        // Hardware buttons
+        XCTAssertEqual(input.parseEvent(cmdId: 0xe5, payload: Data([0x08, 0x00, 0x00, 0x00])), .backButton)
+        XCTAssertEqual(input.parseEvent(cmdId: 0xe5, payload: Data([0x09, 0x00, 0x00, 0x00])), .cameraButton)
+        XCTAssertEqual(input.parseEvent(cmdId: 0xe5, payload: Data([0x01, 0x00, 0x00, 0x00])), .jogPress)
     }
     
     // MARK: - Phase 3 Tests

@@ -36,6 +36,10 @@
         },
         {
           "kind" : "file",
+          "name" : "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGExplorer/Sources/SEGExplorer/Demos/AudioDemo.swift"
+        },
+        {
+          "kind" : "file",
           "name" : "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGExplorer/Sources/SEGExplorer/Demos/CameraCaptureDemo.swift"
         },
         {
@@ -94,6 +98,7 @@
         "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGExplorer/.build/arm64-apple-macosx/debug/SEGExplorer.build/Demo.swift.o",
         "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGExplorer/.build/arm64-apple-macosx/debug/SEGExplorer.build/ARDemo.swift.o",
         "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGExplorer/.build/arm64-apple-macosx/debug/SEGExplorer.build/AnimationDemo.swift.o",
+        "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGExplorer/.build/arm64-apple-macosx/debug/SEGExplorer.build/AudioDemo.swift.o",
         "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGExplorer/.build/arm64-apple-macosx/debug/SEGExplorer.build/CameraCaptureDemo.swift.o",
         "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGExplorer/.build/arm64-apple-macosx/debug/SEGExplorer.build/CameraStreamDemo.swift.o",
         "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGExplorer/.build/arm64-apple-macosx/debug/SEGExplorer.build/GraphicsDemo.swift.o",
@@ -176,6 +181,10 @@
         },
         {
           "kind" : "file",
+          "name" : "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGExplorer/.build/arm64-apple-macosx/debug/SEGExplorer.build/AudioDemo.swift.o"
+        },
+        {
+          "kind" : "file",
           "name" : "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGExplorer/.build/arm64-apple-macosx/debug/SEGExplorer.build/CameraCaptureDemo.swift.o"
         },
         {
@@ -224,6 +233,7 @@
         "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGExplorer/Sources/SEGExplorer/Demo.swift",
         "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGExplorer/Sources/SEGExplorer/Demos/ARDemo.swift",
         "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGExplorer/Sources/SEGExplorer/Demos/AnimationDemo.swift",
+        "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGExplorer/Sources/SEGExplorer/Demos/AudioDemo.swift",
         "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGExplorer/Sources/SEGExplorer/Demos/CameraCaptureDemo.swift",
         "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGExplorer/Sources/SEGExplorer/Demos/CameraStreamDemo.swift",
         "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGExplorer/Sources/SEGExplorer/Demos/GraphicsDemo.swift",
@@ -470,6 +480,7 @@
       "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGExplorer/Sources/SEGExplorer/Demo.swift",
       "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGExplorer/Sources/SEGExplorer/Demos/ARDemo.swift",
       "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGExplorer/Sources/SEGExplorer/Demos/AnimationDemo.swift",
+      "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGExplorer/Sources/SEGExplorer/Demos/AudioDemo.swift",
       "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGExplorer/Sources/SEGExplorer/Demos/CameraCaptureDemo.swift",
       "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGExplorer/Sources/SEGExplorer/Demos/CameraStreamDemo.swift",
       "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGExplorer/Sources/SEGExplorer/Demos/GraphicsDemo.swift",
@@ -672,6 +683,10 @@
         },
         {
           "kind" : "file",
+          "name" : "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGExplorer/Sources/SEGExplorer/Demos/AudioDemo.swift"
+        },
+        {
+          "kind" : "file",
           "name" : "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGExplorer/Sources/SEGExplorer/Demos/CameraCaptureDemo.swift"
         },
         {
@@ -727,6 +742,10 @@
         {
           "kind" : "file",
           "name" : "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGExplorer/.build/arm64-apple-macosx/debug/SEGExplorer.build/AnimationDemo.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGExplorer/.build/arm64-apple-macosx/debug/SEGExplorer.build/AudioDemo.swift.o"
         },
         {
           "kind" : "file",

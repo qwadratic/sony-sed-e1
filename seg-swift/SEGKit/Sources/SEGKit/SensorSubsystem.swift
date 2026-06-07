@@ -80,15 +80,21 @@ public final class SensorSubsystem: @unchecked Sendable {
         return current
     }
     
+    /// Extract 3 big-endian IEEE 754 floats from data at offset.
     private func extractSIMD3(_ data: Data, offset: Int) -> SIMD3<Float> {
         guard data.count >= offset + 12 else { return .zero }
-        return data.withUnsafeBytes { buf in
-            SIMD3(
-                buf.load(fromByteOffset: offset, as: Float.self),
-                buf.load(fromByteOffset: offset + 4, as: Float.self),
-                buf.load(fromByteOffset: offset + 8, as: Float.self)
-            )
-        }
+        return SIMD3(
+            extractFloatBE(data, offset: offset),
+            extractFloatBE(data, offset: offset + 4),
+            extractFloatBE(data, offset: offset + 8)
+        )
+    }
+    
+    /// Read a big-endian IEEE 754 float32.
+    private func extractFloatBE(_ data: Data, offset: Int) -> Float {
+        let bits = UInt32(data[offset]) << 24 | UInt32(data[offset+1]) << 16 |
+                   UInt32(data[offset+2]) << 8  | UInt32(data[offset+3])
+        return Float(bitPattern: bits)
     }
     
     private func extractTimestamp(_ data: Data) -> UInt64 {

@@ -72,15 +72,60 @@ public struct SensorReading: Sendable {
 
 // MARK: - Input
 
-public enum InputEvent: Sendable, Equatable {
-    case tap
-    case longPress
-    case swipeLeft
-    case swipeRight
-    case swipeUp
-    case swipeDown
-    case touchPress(x: Int, y: Int)
-    case touchRelease(x: Int, y: Int)
+public enum InputEvent: Sendable, Equatable, CustomStringConvertible {
+    // Touchpad
+    case tap                    // 0x12
+    case longPress              // 0x13
+    case swipeLeft              // 0x14
+    case swipeRight             // 0x15
+    case fingerOn               // 0x11
+    case fingerOff              // 0x10
+    
+    // Jog dial
+    case jogPress               // 0x01
+    case jogLongPress           // 0x02
+    case jogLongRelease         // 0x03
+    case jogRotateCW            // 0x04
+    case jogRotateCCW           // 0x05
+    
+    // Hardware buttons
+    case backButton             // 0x08
+    case backLongPress          // 0x0a
+    case cameraButton           // 0x09
+    case cameraLongPress        // 0x0f
+    case pttPress               // 0x0b
+    case pttRelease             // 0x0c
+    
+    // Display
+    case displayOff             // 0x0d
+    case displayOn              // 0x0e
+    
+    case unknown(code: UInt8)
+    
+    public var description: String {
+        switch self {
+        case .tap: return "tap"
+        case .longPress: return "longPress"
+        case .swipeLeft: return "swipeLeft"
+        case .swipeRight: return "swipeRight"
+        case .fingerOn: return "fingerOn"
+        case .fingerOff: return "fingerOff"
+        case .jogPress: return "jogPress"
+        case .jogLongPress: return "jogLongPress"
+        case .jogLongRelease: return "jogLongRelease"
+        case .jogRotateCW: return "jogCW"
+        case .jogRotateCCW: return "jogCCW"
+        case .backButton: return "back"
+        case .backLongPress: return "backLong"
+        case .cameraButton: return "camera"
+        case .cameraLongPress: return "cameraLong"
+        case .pttPress: return "pttPress"
+        case .pttRelease: return "pttRelease"
+        case .displayOff: return "displayOff"
+        case .displayOn: return "displayOn"
+        case .unknown(let c): return "unknown(0x\(String(format: "%02x", c)))"
+        }
+    }
 }
 
 // MARK: - Power Mode

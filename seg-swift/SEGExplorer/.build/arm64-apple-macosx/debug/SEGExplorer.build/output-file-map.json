@@ -23,6 +23,13 @@
     "swift-dependencies": "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGExplorer/.build/arm64-apple-macosx/debug/SEGExplorer.build/AnimationDemo.swiftdeps",
     "diagnostics": "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGExplorer/.build/arm64-apple-macosx/debug/SEGExplorer.build/AnimationDemo.dia"
   },
+  "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGExplorer/Sources/SEGExplorer/Demos/AudioDemo.swift": {
+    "dependencies": "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGExplorer/.build/arm64-apple-macosx/debug/SEGExplorer.build/AudioDemo.d",
+    "object": "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGExplorer/.build/arm64-apple-macosx/debug/SEGExplorer.build/AudioDemo.swift.o",
+    "swiftmodule": "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGExplorer/.build/arm64-apple-macosx/debug/SEGExplorer.build/AudioDemo~partial.swiftmodule",
+    "swift-dependencies": "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGExplorer/.build/arm64-apple-macosx/debug/SEGExplorer.build/AudioDemo.swiftdeps",
+    "diagnostics": "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGExplorer/.build/arm64-apple-macosx/debug/SEGExplorer.build/AudioDemo.dia"
+  },
   "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGExplorer/Sources/SEGExplorer/Demos/CameraCaptureDemo.swift": {
     "dependencies": "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGExplorer/.build/arm64-apple-macosx/debug/SEGExplorer.build/CameraCaptureDemo.d",
     "object": "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGExplorer/.build/arm64-apple-macosx/debug/SEGExplorer.build/CameraCaptureDemo.swift.o",

@@ -119,22 +119,30 @@ internal actor ProtocolActor {
             }
             
         case (.ready, 0x3a):  // Accelerometer
+            await transport.send([0x01, 0x00, 0x00], label: "ACK")
             let reading = sensors.handleAccelerometer(frame.payload)
             connection?.eventLog.log("SENSOR", [
-                "accel_x": reading.accelerometer.x, "accel_y": reading.accelerometer.y, "accel_z": reading.accelerometer.z,
-                "gyro_x": reading.gyroscope.x, "gyro_y": reading.gyroscope.y, "gyro_z": reading.gyroscope.z
+                "type": "accel",
+                "x": reading.accelerometer.x, "y": reading.accelerometer.y, "z": reading.accelerometer.z
             ])
             connection?.delegate?.glasses(connection!, didReceiveSensorData: reading)
             
         case (.ready, 0xbc):  // Gyroscope
+            await transport.send([0x01, 0x00, 0x00], label: "ACK")
             let reading = sensors.handleGyroscope(frame.payload)
+            connection?.eventLog.log("SENSOR", [
+                "type": "gyro",
+                "x": reading.gyroscope.x, "y": reading.gyroscope.y, "z": reading.gyroscope.z
+            ])
             connection?.delegate?.glasses(connection!, didReceiveSensorData: reading)
             
         case (.ready, 0xbd):  // Magnetometer
+            await transport.send([0x01, 0x00, 0x00], label: "ACK")
             let reading = sensors.handleMagnetometer(frame.payload)
             connection?.delegate?.glasses(connection!, didReceiveSensorData: reading)
             
         case (.ready, 0x3b):  // Light sensor
+            await transport.send([0x01, 0x00, 0x00], label: "ACK")
             let reading = sensors.handleLight(frame.payload)
             connection?.delegate?.glasses(connection!, didReceiveSensorData: reading)
             
@@ -147,6 +155,7 @@ internal actor ProtocolActor {
             connection?.delegate?.glasses(connection!, didReceiveSensorData: reading)
             
         case (.ready, 0xbb):  // Rotation vector
+            await transport.send([0x01, 0x00, 0x00], label: "ACK")
             let reading = sensors.handleAccelerometer(frame.payload)  // same SIMD3 format
             connection?.delegate?.glasses(connection!, didReceiveSensorData: reading)
             

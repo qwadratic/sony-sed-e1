@@ -22,8 +22,8 @@ final class TouchDemo: Demo {
         switch direction {
         case .swipeLeft:  addEvent("SWIPE LEFT")
         case .swipeRight: addEvent("SWIPE RIGHT")
-        case .swipeUp:    addEvent("SWIPE UP")
-        case .swipeDown:  addEvent("SWIPE DOWN")
+        
+        
         default: break
         }
     }
@@ -31,8 +31,8 @@ final class TouchDemo: Demo {
     /// Called externally for touch press/release events.
     func onTouchEvent(_ event: InputEvent) {
         switch event {
-        case .touchPress(let x, let y): addEvent("PRESS x=\(x) y=\(y)")
-        case .touchRelease(let x, _): addEvent("RELEASE x=\(x)")
+        case .jogRotateCW: addEvent("JOG CW")
+        case .jogRotateCCW: addEvent("JOG CCW")
         case .longPress: addEvent("LONG PRESS")
         default: break
         }
