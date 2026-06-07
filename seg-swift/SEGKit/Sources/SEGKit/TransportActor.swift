@@ -93,17 +93,26 @@ internal actor TransportActor {
     
     private func drainFrames(buffer: Data) async -> Data {
         var buf = buffer
+        eventLog?.debug("drainFrames: \(buf.count)B, first bytes: \(buf.prefix(10).map { String(format: "%02x", $0) }.joined(separator: " "))")
         while buf.count >= 3 {
             let len = (Int(buf[1]) << 8) | Int(buf[2])
             let total = 3 + len
-            guard buf.count >= total else { break }
+            eventLog?.debug("  frame: cmd=0x\(String(format: "%02x", buf[0])) len=\(len) need=\(total) have=\(buf.count)")
+            guard buf.count >= total else {
+                eventLog?.debug("  incomplete frame, waiting for more data")
+                break
+            }
             let frame = WireFrame(
                 cmdId: buf[0],
                 payload: Data(buf[3..<total])
             )
             eventLog?.logRX(cmdId: frame.cmdId, payload: frame.payload)
             buf = Data(buf[total...])
-            await frameHandler?(frame)
+            if frameHandler != nil {
+                await frameHandler?(frame)
+            } else {
+                eventLog?.debug("  ⚠️ frameHandler is nil! Frame dropped.")
+            }
         }
         return buf
     }

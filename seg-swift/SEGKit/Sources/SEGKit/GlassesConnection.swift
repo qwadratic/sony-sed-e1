@@ -65,15 +65,27 @@ public final class GlassesConnection: @unchecked Sendable {
 
         var rfcommChannelID: BluetoothRFCOMMChannelID = 0
         if let services = device.services as? [IOBluetoothSDPServiceRecord] {
+            // Collect all RFCOMM channels
+            var channels: [BluetoothRFCOMMChannelID] = []
             for svc in services {
                 var ch: BluetoothRFCOMMChannelID = 0
                 if svc.getRFCOMMChannelID(&ch) == kIOReturnSuccess {
-                    rfcommChannelID = ch
-                    break
+                    channels.append(ch)
                 }
             }
+            eventLog.debug("SDP found RFCOMM channels: \(channels)", minLevel: .normal)
+            // Prefer channel 4 (SmartEyeglass SPP data channel)
+            // Skip channel 1 (HFP) and channel 7 (unknown/control)
+            if channels.contains(4) {
+                rfcommChannelID = 4
+            } else if let first = channels.first(where: { $0 != 1 }) {
+                rfcommChannelID = first
+            } else if let first = channels.first {
+                rfcommChannelID = first
+            }
         }
-        if rfcommChannelID == 0 { rfcommChannelID = 1 } // fallback
+        if rfcommChannelID == 0 { rfcommChannelID = 4 } // SmartEyeglass default
+        eventLog.debug("Using RFCOMM channel \(rfcommChannelID)", minLevel: .normal)
 
         // Set up bridge
         let bridge = BluetoothBridge(transport: transport)
