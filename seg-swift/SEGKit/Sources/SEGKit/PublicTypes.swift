@@ -36,9 +36,11 @@ public enum CameraQuality: UInt8, Sendable {
 
 public enum SensorType: UInt8, Sendable {
     case accelerometer = 0x01
-    case magnetometer = 0x02
-    case gyroscope = 0x04
-    case light = 0x05
+    case battery = 0x03
+    case rotationVector = 0x0c
+    case gyroscope = 0x0d
+    case magnetometer = 0x0e
+    case light = 0x10
     case camera = 0x13
 }
 
@@ -47,17 +49,23 @@ public struct SensorReading: Sendable {
     public var gyroscope: SIMD3<Float>
     public var magnetometer: SIMD3<Float>
     public var light: Float
+    public var battery: Int            // 0-100 percentage from 0x3e payload
+    public var batteryRaw: [UInt8]     // full 16-byte 0x3e payload for debug
     public var timestamp: UInt64
     
     public init(accelerometer: SIMD3<Float> = .zero,
                 gyroscope: SIMD3<Float> = .zero,
                 magnetometer: SIMD3<Float> = .zero,
                 light: Float = 0,
+                battery: Int = 0,
+                batteryRaw: [UInt8] = [],
                 timestamp: UInt64 = 0) {
         self.accelerometer = accelerometer
         self.gyroscope = gyroscope
         self.magnetometer = magnetometer
         self.light = light
+        self.battery = battery
+        self.batteryRaw = batteryRaw
         self.timestamp = timestamp
     }
 }

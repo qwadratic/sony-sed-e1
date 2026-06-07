@@ -31,6 +31,7 @@ internal enum Cmd {
     
     // Sensors
     static let sensorStart: UInt8 = 0x38
+    static let sensorStop: UInt8 = 0x39
     static let accelData: UInt8 = 0x3a
     static let batterySensor: UInt8 = 0x3e
     static let gyroData: UInt8 = 0xbc

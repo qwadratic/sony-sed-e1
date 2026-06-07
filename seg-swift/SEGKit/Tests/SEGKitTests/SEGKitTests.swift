@@ -264,17 +264,18 @@ final class SEGKitTests: XCTestCase {
         let transport = TransportActor()
         let sensor = SensorSubsystem(transport: transport)
         
-        // Build 4-byte float payload for 500.0
-        var payload = Data(count: 4)
-        var value: Float = 500.0
-        withUnsafeBytes(of: &value) { buf in
-            payload = Data(buf)
-        }
+        // Build 12-byte payload: [accuracy:4B][timestamp:4B][lightValue:4B BE int]
+        // accuracy=0, timestamp=100, light=500
+        var payload = Data(repeating: 0, count: 8)  // accuracy=0, timestamp placeholder
+        payload[4] = 0x00; payload[5] = 0x00; payload[6] = 0x00; payload[7] = 0x64  // timestamp=100
+        // light=500 as big-endian int32: 0x000001F4
+        payload.append(contentsOf: [0x00, 0x00, 0x01, 0xF4])
         
         let reading = sensor.handleLight(payload)
         XCTAssertEqual(reading.light, 500.0, accuracy: 0.01,
-                       "Light sensor should parse 500.0")
+                       "Light sensor should parse 500")
         XCTAssertEqual(sensor.current.light, 500.0, accuracy: 0.01)
+        XCTAssertEqual(reading.timestamp, 100)
     }
     
     func testSensorReadingStruct() {
@@ -298,6 +299,11 @@ final class SEGKitTests: XCTestCase {
     
     func testSensorTypeEnum() {
         XCTAssertEqual(SensorType.accelerometer.rawValue, 0x01)
+        XCTAssertEqual(SensorType.battery.rawValue, 0x03)
+        XCTAssertEqual(SensorType.rotationVector.rawValue, 0x0c)
+        XCTAssertEqual(SensorType.gyroscope.rawValue, 0x0d)
+        XCTAssertEqual(SensorType.magnetometer.rawValue, 0x0e)
+        XCTAssertEqual(SensorType.light.rawValue, 0x10)
         XCTAssertEqual(SensorType.camera.rawValue, 0x13)
     }
 }

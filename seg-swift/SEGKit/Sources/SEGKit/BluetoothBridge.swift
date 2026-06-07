@@ -27,10 +27,6 @@ internal class BluetoothBridge: NSObject, IOBluetoothRFCOMMChannelDelegate {
         channelOpened = false
         var channel: IOBluetoothRFCOMMChannel? = nil
         
-        // First establish baseband connection (handles pairing if needed)
-        let connResult = device.openConnection()
-        eventLog?.debug("openConnection result=\(connResult) connected=\(device.isConnected())", minLevel: .normal)
-        
         let result = device.openRFCOMMChannelAsync(&channel, withChannelID: channelID, delegate: self)
         eventLog?.debug("openRFCOMMChannelAsync result=\(result) channel=\(channel != nil)", minLevel: .normal)
         

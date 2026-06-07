@@ -18,6 +18,7 @@ final class SensorDemo: Demo {
         await glasses.sensors.start(.accelerometer)
         await glasses.sensors.start(.gyroscope)
         await glasses.sensors.start(.magnetometer)
+        await glasses.sensors.start(.battery)
         await render()
     }
     
@@ -37,6 +38,7 @@ final class SensorDemo: Demo {
         await glasses?.sensors.stop(.accelerometer)
         await glasses?.sensors.stop(.gyroscope)
         await glasses?.sensors.stop(.magnetometer)
+        await glasses?.sensors.stop(.battery)
         glasses = nil
     }
     
@@ -69,6 +71,11 @@ final class SensorDemo: Demo {
         TextRenderer.drawText(
             String(format: "Mag    x:%+.2f y:%+.2f z:%+.2f", m.x, m.y, m.z),
             x: 4, y: 54, on: fb
+        )
+        
+        TextRenderer.drawText(
+            String(format: "Batt   %d%%", lastReading.battery),
+            x: 4, y: 70, on: fb
         )
         
         TextRenderer.drawText("[tap] toggle mock", x: 4, y: fb.height - 10, on: fb)
