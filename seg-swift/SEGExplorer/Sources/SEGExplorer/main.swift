@@ -35,17 +35,37 @@ Task {
             exit(1)
         }
     } else if btMode {
-        print("Scanning for SmartEyeglass...")
-        let smartDevices = GlassesConnection.listPairedDevices().filter {
-            $0.name.lowercased().contains("smart") || $0.name.lowercased().contains("sed")
+        let allDevices = GlassesConnection.listPairedDevices()
+        guard !allDevices.isEmpty else {
+            print("No paired Bluetooth devices found.")
+            print("Pair your glasses in System Settings → Bluetooth first.")
+            exit(1)
         }
-        if !smartDevices.isEmpty {
-            for (i, d) in smartDevices.enumerated() {
-                print("  [\(i)] \(d.name) [\(d.address)]")
+
+        let selectedAddress: String
+        if let addr = btAddress {
+            selectedAddress = addr
+        } else {
+            print("Paired Bluetooth devices:")
+            for (i, d) in allDevices.enumerated() {
+                let tag = (d.name.lowercased().contains("smart") ||
+                           d.name.lowercased().contains("sed")) ? " ← glasses?" : ""
+                print("  [\(i)] \(d.name)  [\(d.address)]\(tag)")
             }
+            print("Select device [0-\(allDevices.count - 1)]: ", terminator: "")
+            fflush(stdout)
+            guard let line = readLine(),
+                  let idx = Int(line.trimmingCharacters(in: .whitespaces)),
+                  idx >= 0, idx < allDevices.count else {
+                print("Invalid selection.")
+                exit(1)
+            }
+            selectedAddress = allDevices[idx].address
+            print("→ \(allDevices[idx].name) [\(selectedAddress)]")
         }
+
         do {
-            try await app.glasses.connectBluetooth(address: btAddress)
+            try await app.glasses.connectBluetooth(address: selectedAddress)
             print("BT connected! Waiting for handshake...")
         } catch {
             print("BT connection failed: \(error)")
