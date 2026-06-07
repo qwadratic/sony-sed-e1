@@ -6,6 +6,7 @@ import zlib
 public final class DisplaySubsystem: @unchecked Sendable {
     internal let transport: TransportActor
     internal var initialized = false
+    private let showLock = NSLock()
     
     internal init(transport: TransportActor) {
         self.transport = transport
@@ -16,8 +17,15 @@ public final class DisplaySubsystem: @unchecked Sendable {
     public func show(_ grayscale: [UInt8]) async {
         guard grayscale.count == DisplayConstants.pixelCount else { return }
         guard initialized else { return }
-        let cmd = Self.buildDisplayCommand(grayscale)
+        let cmd = buildCommandSerialized(grayscale)
         await transport.send(cmd, label: "DisplayFrame")
+    }
+    
+    /// Serialize buildDisplayCommand via lock — prevents concurrent deflateCompress crashes.
+    private nonisolated func buildCommandSerialized(_ grayscale: [UInt8]) -> [UInt8] {
+        showLock.lock()
+        defer { showLock.unlock() }
+        return Self.buildDisplayCommand(grayscale)
     }
     
     /// Convert ARGB pixels to 8-bit grayscale using Sony's luma formula.

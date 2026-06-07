@@ -15,6 +15,7 @@ public enum LogLevel: Int, Comparable, Sendable {
 /// Structured event logger. Writes JSONL to /tmp/seg-events.jsonl AND prints to stdout.
 public final class EventLogger: @unchecked Sendable {
     private let fileHandle: FileHandle?
+    private let archiveHandle: FileHandle?
     private let path: String
     public var level: LogLevel = .normal
     
@@ -30,7 +31,8 @@ public final class EventLogger: @unchecked Sendable {
         0xb6: "CaptureData", 0xb7: "CaptureDone", 0xb8: "CaptureCancel",
         0xf1: "CaptureDataAck",
         0x38: "SensorStart", 0x39: "SensorStop",
-        0x3a: "Accelerometer", 0xbc: "Gyroscope", 0xbd: "Magnetometer",
+        0x3a: "Accelerometer", 0x3e: "BatterySensor",
+        0xbc: "Gyroscope", 0xbd: "Magnetometer",
         0x3b: "Light", 0xbb: "RotationVector",
         0x90: "WifiStatusReq", 0x91: "WifiStatusRes",
         0x92: "WifiTurnOn", 0x93: "WifiTurnOff",
@@ -39,9 +41,27 @@ public final class EventLogger: @unchecked Sendable {
     ]
     
     public init(path: String = "/tmp/seg-events.jsonl") {
+        // Timestamped log — never overwrite previous runs
+        let ts = ISO8601DateFormatter().string(from: Date())
+            .replacingOccurrences(of: ":", with: "-")
+        let dir = NSString("~/.seg-logs").expandingTildeInPath
+        try? FileManager.default.createDirectory(atPath: dir, withIntermediateDirectories: true)
+        let archivePath = "\(dir)/seg-events-\(ts).jsonl"
+        
+        // Write to both: /tmp (live tail) + archive (permanent)
         self.path = path
         FileManager.default.createFile(atPath: path, contents: nil)
         self.fileHandle = FileHandle(forWritingAtPath: path)
+        
+        // Also create the archive
+        FileManager.default.createFile(atPath: archivePath, contents: nil)
+        self.archiveHandle = FileHandle(forWritingAtPath: archivePath)
+        
+        let startMsg = "--- session \(ts) ---\n"
+        fileHandle?.write(startMsg.data(using: .utf8)!)
+        archiveHandle?.write(startMsg.data(using: .utf8)!)
+        
+        debug("Logs: \(path) + \(archivePath)", minLevel: .normal)
     }
     
     public func log(_ type: String, _ fields: [String: Any]) {
@@ -51,7 +71,9 @@ public final class EventLogger: @unchecked Sendable {
         if let data = try? JSONSerialization.data(withJSONObject: dict),
            var line = String(data: data, encoding: .utf8) {
             line += "\n"
-            fileHandle?.write(line.data(using: .utf8)!)
+            let lineData = line.data(using: .utf8)!
+            fileHandle?.write(lineData)
+            archiveHandle?.write(lineData)
         }
     }
     
@@ -83,5 +105,8 @@ public final class EventLogger: @unchecked Sendable {
         fflush(stdout)
     }
     
-    deinit { fileHandle?.closeFile() }
+    deinit {
+        fileHandle?.closeFile()
+        archiveHandle?.closeFile()
+    }
 }

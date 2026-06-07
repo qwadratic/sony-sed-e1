@@ -138,6 +138,9 @@ internal actor ProtocolActor {
             let reading = sensors.handleLight(frame.payload)
             connection?.delegate?.glasses(connection!, didReceiveSensorData: reading)
             
+        case (.ready, 0x3e):  // BatterySensor data
+            connection?.eventLog.debug("BatterySensor: \(frame.payload.map { String(format: "%02x", $0) }.joined(separator: " "))")
+            
         case (.ready, 0xbb):  // Rotation vector
             let reading = sensors.handleAccelerometer(frame.payload)  // same SIMD3 format
             connection?.delegate?.glasses(connection!, didReceiveSensorData: reading)

@@ -22,6 +22,7 @@ final class ExplorerApp: GlassesDelegate, @unchecked Sendable {
     var activeDemo: Demo?
     private var sensorSampleCount = 0
     private var frameAckCount = 0
+    private var lastInputTime: Date = .distantPast
     
     init() {
         glasses.delegate = self
@@ -47,7 +48,11 @@ final class ExplorerApp: GlassesDelegate, @unchecked Sendable {
     }
     
     func glasses(_ connection: GlassesConnection, didReceiveInput event: InputEvent) {
-        let ts = ISO8601DateFormatter().string(from: Date())
+        // Debounce: ignore events within 200ms of each other
+        let now = Date()
+        guard now.timeIntervalSince(lastInputTime) > 0.2 else { return }
+        lastInputTime = now
+        let ts = ISO8601DateFormatter().string(from: now)
         print("[\(ts)] INPUT: \(event)")
         Task {
             if let demo = activeDemo {
