@@ -33,6 +33,10 @@ internal actor ProtocolActor {
         self.input = input
     }
     
+    func setConnection(_ conn: GlassesConnection) {
+        self.connection = conn
+    }
+
     func start() async {
         await transport.setFrameHandler { [weak self] frame in
             await self?.handle(frame)

@@ -19,26 +19,28 @@ final class ExplorerApp: GlassesDelegate, @unchecked Sendable {
     ]
     
     private var menuIndex = 0
-    private var activeDemo: Demo?
+    var activeDemo: Demo?
     
     init() {
         glasses.delegate = self
     }
     
     func start() async {
-        // For now, connect via local TCP (emulator)
-        // In production: glasses.connectBluetooth()
         print("SEGExplorer ready. Demos: \(demos.count)")
         for (i, demo) in demos.enumerated() {
             print("  \(i): \(demo.name)")
         }
-        await renderMenu()
+        // Menu renders when phase becomes .ready
+        startREPL()
     }
     
     // MARK: - GlassesDelegate
     
     func glasses(_ connection: GlassesConnection, didChangePhase phase: ConnectionPhase) {
         print("Phase: \(phase)")
+        if case .ready = phase {
+            Task { await renderMenu() }
+        }
     }
     
     func glasses(_ connection: GlassesConnection, didReceiveInput event: InputEvent) {
@@ -103,6 +105,35 @@ final class ExplorerApp: GlassesDelegate, @unchecked Sendable {
         }
     }
     
+    // MARK: - REPL
+
+    func startREPL() {
+        DispatchQueue.global(qos: .userInteractive).async { [self] in
+            print("REPL: [0-7] select demo, [t] tap, [m] menu, [q] quit")
+            while let line = readLine() {
+                let cmd = line.trimmingCharacters(in: .whitespaces)
+                Task {
+                    switch cmd {
+                    case "0"..."7":
+                        if let idx = Int(cmd) {
+                            if self.activeDemo != nil { await self.exitDemo() }
+                            await self.enterDemo(idx)
+                        }
+                    case "t":
+                        await self.activeDemo?.onTap()
+                    case "m":
+                        await self.exitDemo()
+                    case "q":
+                        await self.glasses.disconnect()
+                        exit(0)
+                    default:
+                        print("Unknown: \(cmd)")
+                    }
+                }
+            }
+        }
+    }
+
     // MARK: - Menu
     
     private func renderMenu() async {
@@ -130,14 +161,14 @@ final class ExplorerApp: GlassesDelegate, @unchecked Sendable {
         await glasses.display.show(fb.pixels)
     }
     
-    private func enterDemo(_ index: Int) async {
+    func enterDemo(_ index: Int) async {
         guard index < demos.count else { return }
         let demo = demos[index]
         activeDemo = demo
         await demo.onEnter(glasses: glasses)
     }
     
-    private func exitDemo() async {
+    func exitDemo() async {
         await activeDemo?.onExit()
         activeDemo = nil
         await renderMenu()

@@ -10,7 +10,7 @@ public final class InputSubsystem: @unchecked Sendable {
         case 0x06:  // LevelNotification — treated as tap
             return .tap
         case 0xe5:  // LayoutEventNotify
-            guard payload.count >= 2 else { return nil }
+            guard payload.count >= 1 else { return nil }
             let action = payload[0]
             switch action {
             case 0x00: return .tap

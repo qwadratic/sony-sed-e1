@@ -70,6 +70,14 @@ internal actor TransportActor {
         wifiClientFd = fd
         wifiActive = true
     }
+
+    func closeAll() {
+        if localFd >= 0 { Darwin.close(localFd); localFd = -1 }
+        if wifiClientFd >= 0 { Darwin.close(wifiClientFd); wifiClientFd = -1 }
+        wifiActive = false
+        btRxBuf = Data()
+        wifiRxBuf = Data()
+    }
     
     // MARK: - Private
     
