@@ -75,8 +75,9 @@ public final class CameraSubsystem: @unchecked Sendable {
         guard payload.count >= 6 else { return }
         let status = payload[0]
         if status == 0 {
-            expectedBytes = Int(payload[2]) | (Int(payload[3]) << 8) |
-                           (Int(payload[4]) << 16) | (Int(payload[5]) << 24)
+            // jpeg_size is big-endian (Java ByteBuffer default)
+            expectedBytes = (Int(payload[2]) << 24) | (Int(payload[3]) << 16) |
+                           (Int(payload[4]) << 8) | Int(payload[5])
             accumulator = Data()
             nextExpectedSeq = 0
             capturing = true
@@ -87,12 +88,19 @@ public final class CameraSubsystem: @unchecked Sendable {
     }
     
     internal func handleChunk(_ payload: Data) -> [UInt8]? {
-        guard capturing, payload.count > 3 else { return nil }
+        guard payload.count > 3 else { return nil }
         let seq = Int(payload[0])
         let ack: [UInt8] = [0xf1, 0x00, 0x01, payload[0]]
-        guard seq == nextExpectedSeq else { return ack }
+        guard capturing else {
+            print("  [cam] chunk seq=\(seq) but NOT capturing! payload[0..3]=\(payload.prefix(4).map{String(format:"%02x",$0)}.joined(separator:" "))")
+            return ack
+        }
+        // Accept all chunks (don't dedup — BT delivers in order)
         accumulator.append(payload[3...])
-        nextExpectedSeq += 1
+        nextExpectedSeq = seq + 1
+        if seq % 20 == 0 {
+            print("  [cam] chunk #\(seq) +\(payload.count-3)B acc=\(accumulator.count)/\(expectedBytes)B")
+        }
         return ack
     }
     
