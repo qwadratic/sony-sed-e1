@@ -90,45 +90,39 @@ public final class GlassesConnection: @unchecked Sendable {
 
         // Set up bridge
         let bridge = BluetoothBridge(transport: transport)
+        bridge.eventLog = eventLog
         self.btBridge = bridge  // strong ref
 
-        // Wire protocol actor
+        // Wire protocol actor BEFORE opening channel
         await protocol_sm.setConnection(self)
         await protocol_sm.start()
 
-        // Open RFCOMM channel
-        var channel: IOBluetoothRFCOMMChannel? = nil
-        let result = device.openRFCOMMChannelAsync(
-            &channel,
-            withChannelID: rfcommChannelID,
-            delegate: bridge
-        )
-
-        guard result == kIOReturnSuccess else {
-            self.btBridge = nil
-            throw ConnectionError.connectFailed(errno: result)
-        }
-
-        // Set up connection/disconnection handlers
-        bridge.onConnected = {
-            // Channel is now open — handshake begins automatically
-            // when glasses send ProtocolVersion (0x0a)
-        }
-
+        // Set up connection/disconnection handlers BEFORE opening channel
         bridge.onConnected = { [weak self] in
+            self?.eventLog.debug("🟢 RFCOMM channel open callback fired", minLevel: .normal)
             self?.attemptWifiUpgrade()
         }
 
         bridge.onDisconnected = { [weak self] in
             guard let self else { return }
+            self.eventLog.debug("🔴 RFCOMM channel closed", minLevel: .normal)
             self.phase = .disconnected
             self.delegate?.glasses(self, didChangePhase: .disconnected)
         }
 
         bridge.onError = { [weak self] err in
             guard let self else { return }
+            self.eventLog.debug("❌ RFCOMM error: \(err)", minLevel: .normal)
             self.phase = .disconnected
             self.delegate?.glasses(self, didChangePhase: .disconnected)
+        }
+
+        // Open RFCOMM channel via bridge (ensures main thread dispatch)
+        let result = bridge.openChannel(device: device, channelID: rfcommChannelID)
+
+        guard result == kIOReturnSuccess else {
+            self.btBridge = nil
+            throw ConnectionError.connectFailed(errno: result)
         }
     }
     
