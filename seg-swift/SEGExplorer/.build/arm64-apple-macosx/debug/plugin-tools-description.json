@@ -245,6 +245,10 @@
       "inputs" : [
         {
           "kind" : "file",
+          "name" : "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGKit/Sources/SEGKit/BluetoothBridge.swift"
+        },
+        {
+          "kind" : "file",
           "name" : "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGKit/Sources/SEGKit/CameraSubsystem.swift"
         },
         {
@@ -296,6 +300,7 @@
       "moduleName" : "SEGKit",
       "moduleOutputPath" : "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGExplorer/.build/arm64-apple-macosx/debug/Modules/SEGKit.swiftmodule",
       "objects" : [
+        "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGExplorer/.build/arm64-apple-macosx/debug/SEGKit.build/BluetoothBridge.swift.o",
         "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGExplorer/.build/arm64-apple-macosx/debug/SEGKit.build/CameraSubsystem.swift.o",
         "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGExplorer/.build/arm64-apple-macosx/debug/SEGKit.build/CommandConstants.swift.o",
         "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGExplorer/.build/arm64-apple-macosx/debug/SEGKit.build/DisplaySubsystem.swift.o",
@@ -366,6 +371,10 @@
       "outputs" : [
         {
           "kind" : "file",
+          "name" : "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGExplorer/.build/arm64-apple-macosx/debug/SEGKit.build/BluetoothBridge.swift.o"
+        },
+        {
+          "kind" : "file",
           "name" : "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGExplorer/.build/arm64-apple-macosx/debug/SEGKit.build/CameraSubsystem.swift.o"
         },
         {
@@ -411,6 +420,7 @@
       ],
       "prepareForIndexing" : false,
       "sources" : [
+        "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGKit/Sources/SEGKit/BluetoothBridge.swift",
         "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGKit/Sources/SEGKit/CameraSubsystem.swift",
         "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGKit/Sources/SEGKit/CommandConstants.swift",
         "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGKit/Sources/SEGKit/DisplaySubsystem.swift",
@@ -515,6 +525,7 @@
       "-package-name",
       "segkit",
       "-c",
+      "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGKit/Sources/SEGKit/BluetoothBridge.swift",
       "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGKit/Sources/SEGKit/CameraSubsystem.swift",
       "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGKit/Sources/SEGKit/CommandConstants.swift",
       "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGKit/Sources/SEGKit/DisplaySubsystem.swift",
@@ -741,6 +752,10 @@
         },
         {
           "kind" : "file",
+          "name" : "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGExplorer/.build/arm64-apple-macosx/debug/SEGKit.build/BluetoothBridge.swift.o"
+        },
+        {
+          "kind" : "file",
           "name" : "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGExplorer/.build/arm64-apple-macosx/debug/SEGKit.build/CameraSubsystem.swift.o"
         },
         {
@@ -788,6 +803,10 @@
         {
           "kind" : "virtual",
           "name" : "<sources-file-list>"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGKit/Sources/SEGKit/BluetoothBridge.swift"
         },
         {
           "kind" : "file",

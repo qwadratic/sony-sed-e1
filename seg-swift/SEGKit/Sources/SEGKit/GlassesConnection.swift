@@ -1,4 +1,5 @@
 import Foundation
+import IOBluetooth
 
 /// Errors from connection setup.
 public enum ConnectionError: Error, Sendable {
@@ -6,6 +7,7 @@ public enum ConnectionError: Error, Sendable {
     case invalidAddress
     case connectFailed(errno: Int32)
     case alreadyConnected
+    case deviceNotFound
 }
 
 /// Connection state observable by extension apps.
@@ -31,8 +33,86 @@ public final class GlassesConnection: @unchecked Sendable {
     internal let transport: TransportActor
     internal let protocol_sm: ProtocolActor
     
+    /// Strong reference to keep the BT bridge alive during connection.
+    private var btBridge: BluetoothBridge?
+    
     /// Connect via Bluetooth (scan for SmartEyeglass device).
-    public func connectBluetooth() async throws { }
+    /// - Parameter address: Optional BT address. If nil, scans paired devices.
+    public func connectBluetooth(address: String? = nil) async throws {
+        phase = .connecting
+        delegate?.glasses(self, didChangePhase: .connecting)
+
+        // Find SmartEyeglass device
+        let targetAddress: String
+        if let addr = address {
+            targetAddress = addr
+        } else {
+            guard let found = Self.scanForSmartEyeglass() else {
+                throw ConnectionError.deviceNotFound
+            }
+            targetAddress = found
+        }
+
+        guard let device = IOBluetoothDevice(addressString: targetAddress) else {
+            throw ConnectionError.invalidAddress
+        }
+
+        // SDP query to find RFCOMM channel — must run on main RunLoop
+        device.performSDPQuery(nil)
+        // Wait for SDP query to complete (IOBluetooth posts results async)
+        try await Task.sleep(for: .seconds(4))
+
+        var rfcommChannelID: BluetoothRFCOMMChannelID = 0
+        if let services = device.services as? [IOBluetoothSDPServiceRecord] {
+            for svc in services {
+                var ch: BluetoothRFCOMMChannelID = 0
+                if svc.getRFCOMMChannelID(&ch) == kIOReturnSuccess {
+                    rfcommChannelID = ch
+                    break
+                }
+            }
+        }
+        if rfcommChannelID == 0 { rfcommChannelID = 1 } // fallback
+
+        // Set up bridge
+        let bridge = BluetoothBridge(transport: transport)
+        self.btBridge = bridge  // strong ref
+
+        // Wire protocol actor
+        await protocol_sm.setConnection(self)
+        await protocol_sm.start()
+
+        // Open RFCOMM channel
+        var channel: IOBluetoothRFCOMMChannel? = nil
+        let result = device.openRFCOMMChannelAsync(
+            &channel,
+            withChannelID: rfcommChannelID,
+            delegate: bridge
+        )
+
+        guard result == kIOReturnSuccess else {
+            self.btBridge = nil
+            throw ConnectionError.connectFailed(errno: result)
+        }
+
+        // Set up connection/disconnection handlers
+        bridge.onConnected = {
+            // Channel is now open — handshake begins automatically
+            // when glasses send ProtocolVersion (0x0a)
+        }
+
+        bridge.onDisconnected = { [weak self] in
+            guard let self else { return }
+            self.phase = .disconnected
+            self.delegate?.glasses(self, didChangePhase: .disconnected)
+        }
+
+        bridge.onError = { [weak self] err in
+            guard let self else { return }
+            self.phase = .disconnected
+            self.delegate?.glasses(self, didChangePhase: .disconnected)
+        }
+    }
     
     /// Connect via TCP to ADB-forwarded emulator socket.
     public func connectLocal(host: String, port: UInt16) async throws {
@@ -87,9 +167,48 @@ public final class GlassesConnection: @unchecked Sendable {
     
     /// Disconnect and release all resources.
     public func disconnect() async {
+        btBridge = nil  // release BT delegate
         await transport.closeAll()
         phase = .disconnected
         delegate?.glasses(self, didChangePhase: .disconnected)
+    }
+
+    // MARK: - Device scanning
+
+    /// Scan paired devices for SmartEyeglass. Returns BT address or nil.
+    public static func scanForSmartEyeglass() -> String? {
+        guard let devices = IOBluetoothDevice.pairedDevices() as? [IOBluetoothDevice] else {
+            return nil
+        }
+
+        // First pass: look for "SmartEyeglass" in name
+        for d in devices {
+            let name = (d.name ?? "").lowercased()
+            if name.contains("smarteyeglass") || name.contains("sed-e1") {
+                return d.addressString
+            }
+        }
+
+        // Second pass: check for saved last-used address
+        let lastUsedPath = NSString("~/.glasses_last_addr").expandingTildeInPath
+        if let saved = try? String(contentsOfFile: lastUsedPath, encoding: .utf8)
+                              .trimmingCharacters(in: .whitespacesAndNewlines),
+           !saved.isEmpty {
+            return saved
+        }
+
+        return nil
+    }
+
+    /// List all paired Bluetooth devices. Returns [(name, address)].
+    public static func listPairedDevices() -> [(name: String, address: String)] {
+        guard let devices = IOBluetoothDevice.pairedDevices() as? [IOBluetoothDevice] else {
+            return []
+        }
+        return devices.compactMap { d in
+            guard let addr = d.addressString else { return nil }
+            return (name: d.name ?? "(unknown)", address: addr)
+        }
     }
     
     public init() {

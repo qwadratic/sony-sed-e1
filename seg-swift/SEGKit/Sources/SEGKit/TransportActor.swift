@@ -74,6 +74,8 @@ internal actor TransportActor {
     func closeAll() {
         if localFd >= 0 { Darwin.close(localFd); localFd = -1 }
         if wifiClientFd >= 0 { Darwin.close(wifiClientFd); wifiClientFd = -1 }
+        _ = btChannel?.close()
+        btChannel = nil
         wifiActive = false
         btRxBuf = Data()
         wifiRxBuf = Data()
