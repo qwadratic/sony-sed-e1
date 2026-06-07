@@ -89,6 +89,7 @@ internal actor ProtocolActor {
         // ── Ready state routing ──────────────────────────────
         case (.ready, 0xe5), (.ready, 0x06):  // Input events
             if let event = input.parseEvent(cmdId: frame.cmdId, payload: frame.payload) {
+                connection?.eventLog.log("INPUT", ["event": "\(event)"])
                 connection?.delegate?.glasses(connection!, didReceiveInput: event)
             }
             
@@ -109,6 +110,7 @@ internal actor ProtocolActor {
             
         case (.ready, 0xb7):  // Camera done
             if let jpeg = camera.handleDone(frame.payload) {
+                connection?.eventLog.log("CAMERA", ["event": "captured", "bytes": jpeg.count])
                 if camera.isMovieMode {
                     connection?.delegate?.glasses(connection!, didReceiveStreamFrame: jpeg, frameId: camera.streamFrameCount)
                 } else {
@@ -118,6 +120,10 @@ internal actor ProtocolActor {
             
         case (.ready, 0x3a):  // Accelerometer
             let reading = sensors.handleAccelerometer(frame.payload)
+            connection?.eventLog.log("SENSOR", [
+                "accel_x": reading.accelerometer.x, "accel_y": reading.accelerometer.y, "accel_z": reading.accelerometer.z,
+                "gyro_x": reading.gyroscope.x, "gyro_y": reading.gyroscope.y, "gyro_z": reading.gyroscope.z
+            ])
             connection?.delegate?.glasses(connection!, didReceiveSensorData: reading)
             
         case (.ready, 0xbc):  // Gyroscope
@@ -174,6 +180,7 @@ internal actor ProtocolActor {
         case .ready: cp = .ready
         }
         connection?.phase = cp
+        connection?.eventLog.log("PHASE", ["phase": "\(cp)", "step": phase.rawValue])
         connection?.delegate?.glasses(connection!, didChangePhase: cp)
     }
 }

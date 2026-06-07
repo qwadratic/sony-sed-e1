@@ -20,6 +20,8 @@ final class ExplorerApp: GlassesDelegate, @unchecked Sendable {
     
     private var menuIndex = 0
     var activeDemo: Demo?
+    private var sensorSampleCount = 0
+    private var frameAckCount = 0
     
     init() {
         glasses.delegate = self
@@ -37,13 +39,16 @@ final class ExplorerApp: GlassesDelegate, @unchecked Sendable {
     // MARK: - GlassesDelegate
     
     func glasses(_ connection: GlassesConnection, didChangePhase phase: ConnectionPhase) {
-        print("Phase: \(phase)")
+        let ts = ISO8601DateFormatter().string(from: Date())
+        print("[\(ts)] PHASE: \(phase)")
         if case .ready = phase {
             Task { await renderMenu() }
         }
     }
     
     func glasses(_ connection: GlassesConnection, didReceiveInput event: InputEvent) {
+        let ts = ISO8601DateFormatter().string(from: Date())
+        print("[\(ts)] INPUT: \(event)")
         Task {
             if let demo = activeDemo {
                 switch event {
@@ -80,6 +85,12 @@ final class ExplorerApp: GlassesDelegate, @unchecked Sendable {
     }
     
     func glasses(_ connection: GlassesConnection, didCaptureJPEG data: Data) {
+        let ts = ISO8601DateFormatter().string(from: Date())
+        let path = "/tmp/seg-capture-\(Int(Date().timeIntervalSince1970)).jpg"
+        try? data.write(to: URL(fileURLWithPath: path))
+        print("[\(ts)] CAMERA: captured \(data.count) bytes → \(path)")
+        let isJPEG = data.count > 2 && data[0] == 0xFF && data[1] == 0xD8
+        print("  JPEG valid: \(isJPEG), first bytes: \(data.prefix(8).map { String(format: "%02x", $0) }.joined(separator: " "))")
         Task {
             if let cam = activeDemo as? CameraCaptureDemo {
                 await cam.onCaptureReceived(data)
@@ -98,10 +109,25 @@ final class ExplorerApp: GlassesDelegate, @unchecked Sendable {
     
     func glasses(_ connection: GlassesConnection,
                  didReceiveSensorData data: SensorReading) {
+        sensorSampleCount += 1
+        if sensorSampleCount % 10 == 0 {
+            print(String(format: "[SENSOR #%d] accel=(%.2f, %.2f, %.2f) gyro=(%.3f, %.3f, %.3f) mag=(%.1f, %.1f, %.1f)",
+                         sensorSampleCount,
+                         data.accelerometer.x, data.accelerometer.y, data.accelerometer.z,
+                         data.gyroscope.x, data.gyroscope.y, data.gyroscope.z,
+                         data.magnetometer.x, data.magnetometer.y, data.magnetometer.z))
+        }
         Task {
             if let sensor = activeDemo as? SensorDemo {
                 await sensor.updateSensorData(data)
             }
+        }
+    }
+
+    func glassesDidAcknowledgeFrame(_ connection: GlassesConnection) {
+        frameAckCount += 1
+        if frameAckCount % 50 == 0 {
+            print("[DISPLAY] \(frameAckCount) frames acknowledged")
         }
     }
     

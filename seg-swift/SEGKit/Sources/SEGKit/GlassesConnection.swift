@@ -24,6 +24,7 @@ public final class GlassesConnection: @unchecked Sendable {
     public let camera: CameraSubsystem
     public let sensors: SensorSubsystem
     public let input: InputSubsystem
+    public let eventLog = EventLogger()
     
     public weak var delegate: GlassesDelegate?
     

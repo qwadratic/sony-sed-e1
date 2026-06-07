@@ -261,6 +261,10 @@
         },
         {
           "kind" : "file",
+          "name" : "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGKit/Sources/SEGKit/EventLogger.swift"
+        },
+        {
+          "kind" : "file",
           "name" : "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGKit/Sources/SEGKit/GlassesConnection.swift"
         },
         {
@@ -304,6 +308,7 @@
         "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGExplorer/.build/arm64-apple-macosx/debug/SEGKit.build/CameraSubsystem.swift.o",
         "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGExplorer/.build/arm64-apple-macosx/debug/SEGKit.build/CommandConstants.swift.o",
         "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGExplorer/.build/arm64-apple-macosx/debug/SEGKit.build/DisplaySubsystem.swift.o",
+        "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGExplorer/.build/arm64-apple-macosx/debug/SEGKit.build/EventLogger.swift.o",
         "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGExplorer/.build/arm64-apple-macosx/debug/SEGKit.build/GlassesConnection.swift.o",
         "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGExplorer/.build/arm64-apple-macosx/debug/SEGKit.build/GlassesDelegate.swift.o",
         "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGExplorer/.build/arm64-apple-macosx/debug/SEGKit.build/InputSubsystem.swift.o",
@@ -387,6 +392,10 @@
         },
         {
           "kind" : "file",
+          "name" : "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGExplorer/.build/arm64-apple-macosx/debug/SEGKit.build/EventLogger.swift.o"
+        },
+        {
+          "kind" : "file",
           "name" : "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGExplorer/.build/arm64-apple-macosx/debug/SEGKit.build/GlassesConnection.swift.o"
         },
         {
@@ -424,6 +433,7 @@
         "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGKit/Sources/SEGKit/CameraSubsystem.swift",
         "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGKit/Sources/SEGKit/CommandConstants.swift",
         "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGKit/Sources/SEGKit/DisplaySubsystem.swift",
+        "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGKit/Sources/SEGKit/EventLogger.swift",
         "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGKit/Sources/SEGKit/GlassesConnection.swift",
         "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGKit/Sources/SEGKit/GlassesDelegate.swift",
         "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGKit/Sources/SEGKit/InputSubsystem.swift",
@@ -529,6 +539,7 @@
       "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGKit/Sources/SEGKit/CameraSubsystem.swift",
       "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGKit/Sources/SEGKit/CommandConstants.swift",
       "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGKit/Sources/SEGKit/DisplaySubsystem.swift",
+      "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGKit/Sources/SEGKit/EventLogger.swift",
       "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGKit/Sources/SEGKit/GlassesConnection.swift",
       "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGKit/Sources/SEGKit/GlassesDelegate.swift",
       "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGKit/Sources/SEGKit/InputSubsystem.swift",
@@ -768,6 +779,10 @@
         },
         {
           "kind" : "file",
+          "name" : "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGExplorer/.build/arm64-apple-macosx/debug/SEGKit.build/EventLogger.swift.o"
+        },
+        {
+          "kind" : "file",
           "name" : "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGExplorer/.build/arm64-apple-macosx/debug/SEGKit.build/GlassesConnection.swift.o"
         },
         {
@@ -819,6 +834,10 @@
         {
           "kind" : "file",
           "name" : "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGKit/Sources/SEGKit/DisplaySubsystem.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGKit/Sources/SEGKit/EventLogger.swift"
         },
         {
           "kind" : "file",
