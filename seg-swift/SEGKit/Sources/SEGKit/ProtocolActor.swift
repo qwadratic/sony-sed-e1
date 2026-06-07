@@ -1,0 +1,126 @@
+import Foundation
+
+/// Protocol state machine actor.
+/// Routes decoded frames to correct subsystem. Extension apps never see this.
+internal actor ProtocolActor {
+    private enum Phase: Int {
+        case waitProtocolVersion = 0
+        case waitSettings = 1
+        case waitVersion = 2
+        case waitFota = 3
+        case waitOpenApp = 4
+        case ready = 5
+    }
+    
+    private var phase: Phase = .waitProtocolVersion
+    private let transport: TransportActor
+    private let display: DisplaySubsystem
+    private let camera: CameraSubsystem
+    private let sensors: SensorSubsystem
+    private let input: InputSubsystem
+    
+    weak var connection: GlassesConnection?
+    
+    init(transport: TransportActor,
+         display: DisplaySubsystem,
+         camera: CameraSubsystem,
+         sensors: SensorSubsystem,
+         input: InputSubsystem) {
+        self.transport = transport
+        self.display = display
+        self.camera = camera
+        self.sensors = sensors
+        self.input = input
+    }
+    
+    func start() async {
+        await transport.setFrameHandler { [weak self] frame in
+            await self?.handle(frame)
+        }
+    }
+    
+    private func handle(_ frame: WireFrame) async {
+        switch (phase, frame.cmdId) {
+            
+        // ── Handshake ────────────────────────────────────────
+        case (.waitProtocolVersion, 0x0a):
+            phase = .waitSettings
+            await transport.send([0x71, 0x00, 0x00], label: "SettingsStatusReq")
+            notifyPhase()
+            
+        case (.waitSettings, 0x72):
+            phase = .waitVersion
+            await transport.send([0x07, 0x00, 0x01, 0x01], label: "VersionReq")
+            notifyPhase()
+            
+        case (.waitVersion, 0x08):
+            phase = .waitFota
+            await transport.send(
+                [0x85, 0x00, 0x04, 0x00, 0x00, 0x00, 0x00],
+                label: "NewHostApp"
+            )
+            notifyPhase()
+            
+        case (.waitFota, 0x81):
+            phase = .waitOpenApp
+            await transport.send([0xff, 0x00, 0x00], label: "SyncResponse")
+            // Also send OpenAppStartRequest
+            await transport.send([0x30, 0x00, 0x00], label: "OpenAppStartReq")
+            notifyPhase()
+            
+        case (.waitOpenApp, 0x31), (.waitOpenApp, 0x06):
+            phase = .ready
+            await display.initialize()
+            notifyPhase()
+            
+        // ── Ready state routing ──────────────────────────────
+        case (.ready, 0xe5), (.ready, 0x06):  // Input events
+            if let event = input.parseEvent(cmdId: frame.cmdId, payload: frame.payload) {
+                connection?.delegate?.glasses(connection!, didReceiveInput: event)
+            }
+            
+        case (.ready, 0xe8):  // Image ACK
+            connection?.delegate?.glassesDidAcknowledgeFrame(connection!)
+            
+        case (.ready, 0xb5):  // Camera capture response
+            camera.handleCaptureResponse(frame.payload)
+            
+        case (.ready, 0xb6):  // Camera data chunk
+            if let ack = camera.handleChunk(frame.payload) {
+                await transport.send(ack, label: "CaptureDataAck")
+            }
+            
+        case (.ready, 0xb7):  // Camera done
+            if let jpeg = camera.handleDone(frame.payload) {
+                connection?.delegate?.glasses(connection!, didCaptureJPEG: jpeg)
+            }
+            
+        case (.ready, 0x3a):  // Accelerometer
+            let reading = sensors.handleAccelerometer(frame.payload)
+            connection?.delegate?.glasses(connection!, didReceiveSensorData: reading)
+            
+        case (.ready, 0xbc):  // Gyroscope
+            let reading = sensors.handleGyroscope(frame.payload)
+            connection?.delegate?.glasses(connection!, didReceiveSensorData: reading)
+            
+        case (.ready, 0xbd):  // Magnetometer
+            let reading = sensors.handleMagnetometer(frame.payload)
+            connection?.delegate?.glasses(connection!, didReceiveSensorData: reading)
+            
+        default:
+            break  // Unknown or out-of-phase frame
+        }
+    }
+    
+    private func notifyPhase() {
+        let cp: ConnectionPhase
+        switch phase {
+        case .waitProtocolVersion: cp = .connecting
+        case .waitSettings, .waitVersion, .waitFota, .waitOpenApp:
+            cp = .handshaking(step: phase.rawValue)
+        case .ready: cp = .ready
+        }
+        connection?.phase = cp
+        connection?.delegate?.glasses(connection!, didChangePhase: cp)
+    }
+}

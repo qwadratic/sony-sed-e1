@@ -1,0 +1,850 @@
+{
+  "builtTestProducts" : [
+
+  ],
+  "copyCommands" : {
+
+  },
+  "explicitTargetDependencyImportCheckingMode" : {
+    "none" : {
+
+    }
+  },
+  "generatedSourceTargetSet" : [
+
+  ],
+  "pluginDescriptions" : [
+
+  ],
+  "swiftCommands" : {
+    "C.SEGExplorer-arm64-apple-macosx26.0-debug.module" : {
+      "executable" : "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc",
+      "fileList" : "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGExplorer/.build/arm64-apple-macosx/debug/SEGExplorer.build/sources",
+      "importPath" : "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGExplorer/.build/arm64-apple-macosx/debug/Modules",
+      "inputs" : [
+        {
+          "kind" : "file",
+          "name" : "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGExplorer/Sources/SEGExplorer/Demo.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGExplorer/Sources/SEGExplorer/Demos/ARDemo.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGExplorer/Sources/SEGExplorer/Demos/AnimationDemo.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGExplorer/Sources/SEGExplorer/Demos/CameraCaptureDemo.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGExplorer/Sources/SEGExplorer/Demos/CameraStreamDemo.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGExplorer/Sources/SEGExplorer/Demos/GraphicsDemo.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGExplorer/Sources/SEGExplorer/Demos/SensorDemo.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGExplorer/Sources/SEGExplorer/Demos/TextDemo.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGExplorer/Sources/SEGExplorer/Demos/TouchDemo.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGExplorer/Sources/SEGExplorer/ExplorerApp.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGExplorer/Sources/SEGExplorer/FrameBuffer.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGExplorer/Sources/SEGExplorer/TextRenderer.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGExplorer/Sources/SEGExplorer/main.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGExplorer/.build/arm64-apple-macosx/debug/swift-version--58304C5D6DBC2206.txt"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGExplorer/.build/arm64-apple-macosx/debug/Modules/SEGKit.swiftmodule"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGExplorer/.build/arm64-apple-macosx/debug/SEGExplorer.build/sources"
+        }
+      ],
+      "isLibrary" : false,
+      "moduleName" : "SEGExplorer",
+      "moduleOutputPath" : "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGExplorer/.build/arm64-apple-macosx/debug/Modules/SEGExplorer.swiftmodule",
+      "objects" : [
+        "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGExplorer/.build/arm64-apple-macosx/debug/SEGExplorer.build/Demo.swift.o",
+        "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGExplorer/.build/arm64-apple-macosx/debug/SEGExplorer.build/ARDemo.swift.o",
+        "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGExplorer/.build/arm64-apple-macosx/debug/SEGExplorer.build/AnimationDemo.swift.o",
+        "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGExplorer/.build/arm64-apple-macosx/debug/SEGExplorer.build/CameraCaptureDemo.swift.o",
+        "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGExplorer/.build/arm64-apple-macosx/debug/SEGExplorer.build/CameraStreamDemo.swift.o",
+        "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGExplorer/.build/arm64-apple-macosx/debug/SEGExplorer.build/GraphicsDemo.swift.o",
+        "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGExplorer/.build/arm64-apple-macosx/debug/SEGExplorer.build/SensorDemo.swift.o",
+        "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGExplorer/.build/arm64-apple-macosx/debug/SEGExplorer.build/TextDemo.swift.o",
+        "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGExplorer/.build/arm64-apple-macosx/debug/SEGExplorer.build/TouchDemo.swift.o",
+        "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGExplorer/.build/arm64-apple-macosx/debug/SEGExplorer.build/ExplorerApp.swift.o",
+        "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGExplorer/.build/arm64-apple-macosx/debug/SEGExplorer.build/FrameBuffer.swift.o",
+        "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGExplorer/.build/arm64-apple-macosx/debug/SEGExplorer.build/TextRenderer.swift.o",
+        "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGExplorer/.build/arm64-apple-macosx/debug/SEGExplorer.build/main.swift.o"
+      ],
+      "otherArguments" : [
+        "-target",
+        "arm64-apple-macosx13.0",
+        "-incremental",
+        "-enable-batch-mode",
+        "-serialize-diagnostics",
+        "-index-store-path",
+        "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGExplorer/.build/arm64-apple-macosx/debug/index/store",
+        "-Onone",
+        "-enable-testing",
+        "-j10",
+        "-DSWIFT_PACKAGE",
+        "-DDEBUG",
+        "-DSWIFT_MODULE_RESOURCE_BUNDLE_UNAVAILABLE",
+        "-module-cache-path",
+        "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGExplorer/.build/arm64-apple-macosx/debug/ModuleCache",
+        "-parseable-output",
+        "-Xfrontend",
+        "-entry-point-function-name",
+        "-Xfrontend",
+        "SEGExplorer_main",
+        "-swift-version",
+        "5",
+        "-plugin-path",
+        "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/host/plugins/testing",
+        "-sdk",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.2.sdk",
+        "-F",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks",
+        "-F",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/PrivateFrameworks",
+        "-I",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib",
+        "-L",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib",
+        "-g",
+        "-Xcc",
+        "-isysroot",
+        "-Xcc",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.2.sdk",
+        "-Xcc",
+        "-F",
+        "-Xcc",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks",
+        "-Xcc",
+        "-F",
+        "-Xcc",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/PrivateFrameworks",
+        "-Xcc",
+        "-fPIC",
+        "-Xcc",
+        "-g",
+        "-package-name",
+        "segexplorer"
+      ],
+      "outputFileMapPath" : "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGExplorer/.build/arm64-apple-macosx/debug/SEGExplorer.build/output-file-map.json",
+      "outputs" : [
+        {
+          "kind" : "file",
+          "name" : "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGExplorer/.build/arm64-apple-macosx/debug/SEGExplorer.build/Demo.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGExplorer/.build/arm64-apple-macosx/debug/SEGExplorer.build/ARDemo.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGExplorer/.build/arm64-apple-macosx/debug/SEGExplorer.build/AnimationDemo.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGExplorer/.build/arm64-apple-macosx/debug/SEGExplorer.build/CameraCaptureDemo.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGExplorer/.build/arm64-apple-macosx/debug/SEGExplorer.build/CameraStreamDemo.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGExplorer/.build/arm64-apple-macosx/debug/SEGExplorer.build/GraphicsDemo.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGExplorer/.build/arm64-apple-macosx/debug/SEGExplorer.build/SensorDemo.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGExplorer/.build/arm64-apple-macosx/debug/SEGExplorer.build/TextDemo.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGExplorer/.build/arm64-apple-macosx/debug/SEGExplorer.build/TouchDemo.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGExplorer/.build/arm64-apple-macosx/debug/SEGExplorer.build/ExplorerApp.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGExplorer/.build/arm64-apple-macosx/debug/SEGExplorer.build/FrameBuffer.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGExplorer/.build/arm64-apple-macosx/debug/SEGExplorer.build/TextRenderer.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGExplorer/.build/arm64-apple-macosx/debug/SEGExplorer.build/main.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGExplorer/.build/arm64-apple-macosx/debug/Modules/SEGExplorer.swiftmodule"
+        }
+      ],
+      "prepareForIndexing" : false,
+      "sources" : [
+        "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGExplorer/Sources/SEGExplorer/Demo.swift",
+        "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGExplorer/Sources/SEGExplorer/Demos/ARDemo.swift",
+        "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGExplorer/Sources/SEGExplorer/Demos/AnimationDemo.swift",
+        "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGExplorer/Sources/SEGExplorer/Demos/CameraCaptureDemo.swift",
+        "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGExplorer/Sources/SEGExplorer/Demos/CameraStreamDemo.swift",
+        "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGExplorer/Sources/SEGExplorer/Demos/GraphicsDemo.swift",
+        "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGExplorer/Sources/SEGExplorer/Demos/SensorDemo.swift",
+        "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGExplorer/Sources/SEGExplorer/Demos/TextDemo.swift",
+        "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGExplorer/Sources/SEGExplorer/Demos/TouchDemo.swift",
+        "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGExplorer/Sources/SEGExplorer/ExplorerApp.swift",
+        "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGExplorer/Sources/SEGExplorer/FrameBuffer.swift",
+        "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGExplorer/Sources/SEGExplorer/TextRenderer.swift",
+        "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGExplorer/Sources/SEGExplorer/main.swift"
+      ],
+      "tempsPath" : "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGExplorer/.build/arm64-apple-macosx/debug/SEGExplorer.build",
+      "wholeModuleOptimization" : false
+    },
+    "C.SEGKit-arm64-apple-macosx26.0-debug.module" : {
+      "executable" : "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc",
+      "fileList" : "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGExplorer/.build/arm64-apple-macosx/debug/SEGKit.build/sources",
+      "importPath" : "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGExplorer/.build/arm64-apple-macosx/debug/Modules",
+      "inputs" : [
+        {
+          "kind" : "file",
+          "name" : "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGKit/Sources/SEGKit/CameraSubsystem.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGKit/Sources/SEGKit/CommandConstants.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGKit/Sources/SEGKit/DisplaySubsystem.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGKit/Sources/SEGKit/GlassesConnection.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGKit/Sources/SEGKit/GlassesDelegate.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGKit/Sources/SEGKit/InputSubsystem.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGKit/Sources/SEGKit/ProtocolActor.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGKit/Sources/SEGKit/PublicTypes.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGKit/Sources/SEGKit/SensorSubsystem.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGKit/Sources/SEGKit/TransportActor.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGExplorer/.build/arm64-apple-macosx/debug/swift-version--58304C5D6DBC2206.txt"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGExplorer/.build/arm64-apple-macosx/debug/SEGKit.build/sources"
+        }
+      ],
+      "isLibrary" : true,
+      "moduleName" : "SEGKit",
+      "moduleOutputPath" : "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGExplorer/.build/arm64-apple-macosx/debug/Modules/SEGKit.swiftmodule",
+      "objects" : [
+        "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGExplorer/.build/arm64-apple-macosx/debug/SEGKit.build/CameraSubsystem.swift.o",
+        "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGExplorer/.build/arm64-apple-macosx/debug/SEGKit.build/CommandConstants.swift.o",
+        "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGExplorer/.build/arm64-apple-macosx/debug/SEGKit.build/DisplaySubsystem.swift.o",
+        "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGExplorer/.build/arm64-apple-macosx/debug/SEGKit.build/GlassesConnection.swift.o",
+        "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGExplorer/.build/arm64-apple-macosx/debug/SEGKit.build/GlassesDelegate.swift.o",
+        "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGExplorer/.build/arm64-apple-macosx/debug/SEGKit.build/InputSubsystem.swift.o",
+        "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGExplorer/.build/arm64-apple-macosx/debug/SEGKit.build/ProtocolActor.swift.o",
+        "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGExplorer/.build/arm64-apple-macosx/debug/SEGKit.build/PublicTypes.swift.o",
+        "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGExplorer/.build/arm64-apple-macosx/debug/SEGKit.build/SensorSubsystem.swift.o",
+        "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGExplorer/.build/arm64-apple-macosx/debug/SEGKit.build/TransportActor.swift.o"
+      ],
+      "otherArguments" : [
+        "-target",
+        "arm64-apple-macosx13.0",
+        "-incremental",
+        "-enable-batch-mode",
+        "-serialize-diagnostics",
+        "-index-store-path",
+        "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGExplorer/.build/arm64-apple-macosx/debug/index/store",
+        "-Onone",
+        "-enable-testing",
+        "-j10",
+        "-DSWIFT_PACKAGE",
+        "-DDEBUG",
+        "-DSWIFT_MODULE_RESOURCE_BUNDLE_UNAVAILABLE",
+        "-module-cache-path",
+        "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGExplorer/.build/arm64-apple-macosx/debug/ModuleCache",
+        "-parseable-output",
+        "-parse-as-library",
+        "-emit-objc-header",
+        "-emit-objc-header-path",
+        "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGExplorer/.build/arm64-apple-macosx/debug/SEGKit.build/include/SEGKit-Swift.h",
+        "-swift-version",
+        "5",
+        "-plugin-path",
+        "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/host/plugins/testing",
+        "-sdk",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.2.sdk",
+        "-F",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks",
+        "-F",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/PrivateFrameworks",
+        "-I",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib",
+        "-L",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib",
+        "-g",
+        "-Xcc",
+        "-isysroot",
+        "-Xcc",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.2.sdk",
+        "-Xcc",
+        "-F",
+        "-Xcc",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks",
+        "-Xcc",
+        "-F",
+        "-Xcc",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/PrivateFrameworks",
+        "-Xcc",
+        "-fPIC",
+        "-Xcc",
+        "-g",
+        "-package-name",
+        "segkit"
+      ],
+      "outputFileMapPath" : "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGExplorer/.build/arm64-apple-macosx/debug/SEGKit.build/output-file-map.json",
+      "outputs" : [
+        {
+          "kind" : "file",
+          "name" : "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGExplorer/.build/arm64-apple-macosx/debug/SEGKit.build/CameraSubsystem.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGExplorer/.build/arm64-apple-macosx/debug/SEGKit.build/CommandConstants.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGExplorer/.build/arm64-apple-macosx/debug/SEGKit.build/DisplaySubsystem.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGExplorer/.build/arm64-apple-macosx/debug/SEGKit.build/GlassesConnection.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGExplorer/.build/arm64-apple-macosx/debug/SEGKit.build/GlassesDelegate.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGExplorer/.build/arm64-apple-macosx/debug/SEGKit.build/InputSubsystem.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGExplorer/.build/arm64-apple-macosx/debug/SEGKit.build/ProtocolActor.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGExplorer/.build/arm64-apple-macosx/debug/SEGKit.build/PublicTypes.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGExplorer/.build/arm64-apple-macosx/debug/SEGKit.build/SensorSubsystem.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGExplorer/.build/arm64-apple-macosx/debug/SEGKit.build/TransportActor.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGExplorer/.build/arm64-apple-macosx/debug/Modules/SEGKit.swiftmodule"
+        }
+      ],
+      "prepareForIndexing" : false,
+      "sources" : [
+        "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGKit/Sources/SEGKit/CameraSubsystem.swift",
+        "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGKit/Sources/SEGKit/CommandConstants.swift",
+        "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGKit/Sources/SEGKit/DisplaySubsystem.swift",
+        "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGKit/Sources/SEGKit/GlassesConnection.swift",
+        "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGKit/Sources/SEGKit/GlassesDelegate.swift",
+        "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGKit/Sources/SEGKit/InputSubsystem.swift",
+        "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGKit/Sources/SEGKit/ProtocolActor.swift",
+        "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGKit/Sources/SEGKit/PublicTypes.swift",
+        "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGKit/Sources/SEGKit/SensorSubsystem.swift",
+        "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGKit/Sources/SEGKit/TransportActor.swift"
+      ],
+      "tempsPath" : "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGExplorer/.build/arm64-apple-macosx/debug/SEGKit.build",
+      "wholeModuleOptimization" : false
+    }
+  },
+  "swiftFrontendCommands" : {
+
+  },
+  "swiftTargetScanArgs" : {
+    "SEGExplorer" : [
+      "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc",
+      "-module-name",
+      "SEGExplorer",
+      "-package-name",
+      "segexplorer",
+      "-c",
+      "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGExplorer/Sources/SEGExplorer/Demo.swift",
+      "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGExplorer/Sources/SEGExplorer/Demos/ARDemo.swift",
+      "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGExplorer/Sources/SEGExplorer/Demos/AnimationDemo.swift",
+      "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGExplorer/Sources/SEGExplorer/Demos/CameraCaptureDemo.swift",
+      "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGExplorer/Sources/SEGExplorer/Demos/CameraStreamDemo.swift",
+      "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGExplorer/Sources/SEGExplorer/Demos/GraphicsDemo.swift",
+      "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGExplorer/Sources/SEGExplorer/Demos/SensorDemo.swift",
+      "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGExplorer/Sources/SEGExplorer/Demos/TextDemo.swift",
+      "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGExplorer/Sources/SEGExplorer/Demos/TouchDemo.swift",
+      "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGExplorer/Sources/SEGExplorer/ExplorerApp.swift",
+      "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGExplorer/Sources/SEGExplorer/FrameBuffer.swift",
+      "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGExplorer/Sources/SEGExplorer/TextRenderer.swift",
+      "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGExplorer/Sources/SEGExplorer/main.swift",
+      "-I",
+      "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGExplorer/.build/arm64-apple-macosx/debug/Modules",
+      "-target",
+      "arm64-apple-macosx13.0",
+      "-incremental",
+      "-enable-batch-mode",
+      "-serialize-diagnostics",
+      "-index-store-path",
+      "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGExplorer/.build/arm64-apple-macosx/debug/index/store",
+      "-Onone",
+      "-enable-testing",
+      "-j10",
+      "-DSWIFT_PACKAGE",
+      "-DDEBUG",
+      "-DSWIFT_MODULE_RESOURCE_BUNDLE_UNAVAILABLE",
+      "-module-cache-path",
+      "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGExplorer/.build/arm64-apple-macosx/debug/ModuleCache",
+      "-parseable-output",
+      "-Xfrontend",
+      "-entry-point-function-name",
+      "-Xfrontend",
+      "SEGExplorer_main",
+      "-swift-version",
+      "5",
+      "-plugin-path",
+      "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/host/plugins/testing",
+      "-sdk",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.2.sdk",
+      "-F",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks",
+      "-F",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/PrivateFrameworks",
+      "-I",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib",
+      "-L",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib",
+      "-g",
+      "-Xcc",
+      "-isysroot",
+      "-Xcc",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.2.sdk",
+      "-Xcc",
+      "-F",
+      "-Xcc",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks",
+      "-Xcc",
+      "-F",
+      "-Xcc",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/PrivateFrameworks",
+      "-Xcc",
+      "-fPIC",
+      "-Xcc",
+      "-g",
+      "-package-name",
+      "segexplorer",
+      "-driver-use-frontend-path",
+      "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc"
+    ],
+    "SEGKit" : [
+      "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc",
+      "-module-name",
+      "SEGKit",
+      "-package-name",
+      "segkit",
+      "-c",
+      "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGKit/Sources/SEGKit/CameraSubsystem.swift",
+      "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGKit/Sources/SEGKit/CommandConstants.swift",
+      "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGKit/Sources/SEGKit/DisplaySubsystem.swift",
+      "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGKit/Sources/SEGKit/GlassesConnection.swift",
+      "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGKit/Sources/SEGKit/GlassesDelegate.swift",
+      "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGKit/Sources/SEGKit/InputSubsystem.swift",
+      "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGKit/Sources/SEGKit/ProtocolActor.swift",
+      "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGKit/Sources/SEGKit/PublicTypes.swift",
+      "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGKit/Sources/SEGKit/SensorSubsystem.swift",
+      "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGKit/Sources/SEGKit/TransportActor.swift",
+      "-I",
+      "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGExplorer/.build/arm64-apple-macosx/debug/Modules",
+      "-target",
+      "arm64-apple-macosx13.0",
+      "-incremental",
+      "-enable-batch-mode",
+      "-serialize-diagnostics",
+      "-index-store-path",
+      "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGExplorer/.build/arm64-apple-macosx/debug/index/store",
+      "-Onone",
+      "-enable-testing",
+      "-j10",
+      "-DSWIFT_PACKAGE",
+      "-DDEBUG",
+      "-DSWIFT_MODULE_RESOURCE_BUNDLE_UNAVAILABLE",
+      "-module-cache-path",
+      "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGExplorer/.build/arm64-apple-macosx/debug/ModuleCache",
+      "-parseable-output",
+      "-parse-as-library",
+      "-emit-objc-header",
+      "-emit-objc-header-path",
+      "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGExplorer/.build/arm64-apple-macosx/debug/SEGKit.build/include/SEGKit-Swift.h",
+      "-swift-version",
+      "5",
+      "-plugin-path",
+      "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/host/plugins/testing",
+      "-sdk",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.2.sdk",
+      "-F",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks",
+      "-F",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/PrivateFrameworks",
+      "-I",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib",
+      "-L",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib",
+      "-g",
+      "-Xcc",
+      "-isysroot",
+      "-Xcc",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.2.sdk",
+      "-Xcc",
+      "-F",
+      "-Xcc",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks",
+      "-Xcc",
+      "-F",
+      "-Xcc",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/PrivateFrameworks",
+      "-Xcc",
+      "-fPIC",
+      "-Xcc",
+      "-g",
+      "-package-name",
+      "segkit",
+      "-driver-use-frontend-path",
+      "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc"
+    ]
+  },
+  "targetDependencyMap" : {
+    "SEGExplorer" : [
+      "SEGKit"
+    ],
+    "SEGKit" : [
+
+    ]
+  },
+  "testDiscoveryCommands" : {
+
+  },
+  "testEntryPointCommands" : {
+
+  },
+  "traitConfiguration" : {
+    "default" : {
+
+    }
+  },
+  "writeCommands" : {
+    "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGExplorer/.build/arm64-apple-macosx/debug/SEGExplorer-entitlement.plist" : {
+      "alwaysOutOfDate" : false,
+      "inputs" : [
+        {
+          "kind" : "virtual",
+          "name" : "<entitlement-plist>"
+        },
+        {
+          "kind" : "virtual",
+          "name" : "<com.apple.security.get-task-allow>"
+        }
+      ],
+      "outputFilePath" : "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGExplorer/.build/arm64-apple-macosx/debug/SEGExplorer-entitlement.plist"
+    },
+    "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGExplorer/.build/arm64-apple-macosx/debug/SEGExplorer.build/sources" : {
+      "alwaysOutOfDate" : false,
+      "inputs" : [
+        {
+          "kind" : "virtual",
+          "name" : "<sources-file-list>"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGExplorer/Sources/SEGExplorer/Demo.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGExplorer/Sources/SEGExplorer/Demos/ARDemo.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGExplorer/Sources/SEGExplorer/Demos/AnimationDemo.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGExplorer/Sources/SEGExplorer/Demos/CameraCaptureDemo.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGExplorer/Sources/SEGExplorer/Demos/CameraStreamDemo.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGExplorer/Sources/SEGExplorer/Demos/GraphicsDemo.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGExplorer/Sources/SEGExplorer/Demos/SensorDemo.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGExplorer/Sources/SEGExplorer/Demos/TextDemo.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGExplorer/Sources/SEGExplorer/Demos/TouchDemo.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGExplorer/Sources/SEGExplorer/ExplorerApp.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGExplorer/Sources/SEGExplorer/FrameBuffer.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGExplorer/Sources/SEGExplorer/TextRenderer.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGExplorer/Sources/SEGExplorer/main.swift"
+        }
+      ],
+      "outputFilePath" : "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGExplorer/.build/arm64-apple-macosx/debug/SEGExplorer.build/sources"
+    },
+    "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGExplorer/.build/arm64-apple-macosx/debug/SEGExplorer.product/Objects.LinkFileList" : {
+      "alwaysOutOfDate" : false,
+      "inputs" : [
+        {
+          "kind" : "virtual",
+          "name" : "<link-file-list>"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGExplorer/.build/arm64-apple-macosx/debug/SEGExplorer.build/ARDemo.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGExplorer/.build/arm64-apple-macosx/debug/SEGExplorer.build/AnimationDemo.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGExplorer/.build/arm64-apple-macosx/debug/SEGExplorer.build/CameraCaptureDemo.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGExplorer/.build/arm64-apple-macosx/debug/SEGExplorer.build/CameraStreamDemo.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGExplorer/.build/arm64-apple-macosx/debug/SEGExplorer.build/Demo.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGExplorer/.build/arm64-apple-macosx/debug/SEGExplorer.build/ExplorerApp.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGExplorer/.build/arm64-apple-macosx/debug/SEGExplorer.build/FrameBuffer.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGExplorer/.build/arm64-apple-macosx/debug/SEGExplorer.build/GraphicsDemo.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGExplorer/.build/arm64-apple-macosx/debug/SEGExplorer.build/SensorDemo.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGExplorer/.build/arm64-apple-macosx/debug/SEGExplorer.build/TextDemo.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGExplorer/.build/arm64-apple-macosx/debug/SEGExplorer.build/TextRenderer.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGExplorer/.build/arm64-apple-macosx/debug/SEGExplorer.build/TouchDemo.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGExplorer/.build/arm64-apple-macosx/debug/SEGExplorer.build/main.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGExplorer/.build/arm64-apple-macosx/debug/SEGKit.build/CameraSubsystem.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGExplorer/.build/arm64-apple-macosx/debug/SEGKit.build/CommandConstants.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGExplorer/.build/arm64-apple-macosx/debug/SEGKit.build/DisplaySubsystem.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGExplorer/.build/arm64-apple-macosx/debug/SEGKit.build/GlassesConnection.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGExplorer/.build/arm64-apple-macosx/debug/SEGKit.build/GlassesDelegate.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGExplorer/.build/arm64-apple-macosx/debug/SEGKit.build/InputSubsystem.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGExplorer/.build/arm64-apple-macosx/debug/SEGKit.build/ProtocolActor.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGExplorer/.build/arm64-apple-macosx/debug/SEGKit.build/PublicTypes.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGExplorer/.build/arm64-apple-macosx/debug/SEGKit.build/SensorSubsystem.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGExplorer/.build/arm64-apple-macosx/debug/SEGKit.build/TransportActor.swift.o"
+        }
+      ],
+      "outputFilePath" : "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGExplorer/.build/arm64-apple-macosx/debug/SEGExplorer.product/Objects.LinkFileList"
+    },
+    "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGExplorer/.build/arm64-apple-macosx/debug/SEGKit.build/sources" : {
+      "alwaysOutOfDate" : false,
+      "inputs" : [
+        {
+          "kind" : "virtual",
+          "name" : "<sources-file-list>"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGKit/Sources/SEGKit/CameraSubsystem.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGKit/Sources/SEGKit/CommandConstants.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGKit/Sources/SEGKit/DisplaySubsystem.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGKit/Sources/SEGKit/GlassesConnection.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGKit/Sources/SEGKit/GlassesDelegate.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGKit/Sources/SEGKit/InputSubsystem.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGKit/Sources/SEGKit/ProtocolActor.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGKit/Sources/SEGKit/PublicTypes.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGKit/Sources/SEGKit/SensorSubsystem.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGKit/Sources/SEGKit/TransportActor.swift"
+        }
+      ],
+      "outputFilePath" : "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGExplorer/.build/arm64-apple-macosx/debug/SEGKit.build/sources"
+    },
+    "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGExplorer/.build/arm64-apple-macosx/debug/swift-version--58304C5D6DBC2206.txt" : {
+      "alwaysOutOfDate" : true,
+      "inputs" : [
+        {
+          "kind" : "virtual",
+          "name" : "<swift-get-version>"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc"
+        }
+      ],
+      "outputFilePath" : "/Users/gerhardgustav/Desktop/hobby-dev/sony-sed-e1/seg-swift/SEGExplorer/.build/arm64-apple-macosx/debug/swift-version--58304C5D6DBC2206.txt"
+    }
+  }
+}

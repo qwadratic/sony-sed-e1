@@ -47,3 +47,5 @@ progress.md
 
 # Session monitor
 .monitor/
+seg-swift/SEGKit/.build/
+seg-swift/SEGExplorer/.build/
