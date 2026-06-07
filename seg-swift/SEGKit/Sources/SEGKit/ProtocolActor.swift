@@ -97,6 +97,10 @@ internal actor ProtocolActor {
             
         case (.ready, 0xb5):  // Camera capture response
             camera.handleCaptureResponse(frame.payload)
+            if let err = camera.lastError {
+                connection?.delegate?.glasses(connection!, cameraError: err)
+                camera.lastError = nil
+            }
             
         case (.ready, 0xb6):  // Camera data chunk
             if let ack = camera.handleChunk(frame.payload) {
@@ -105,7 +109,11 @@ internal actor ProtocolActor {
             
         case (.ready, 0xb7):  // Camera done
             if let jpeg = camera.handleDone(frame.payload) {
-                connection?.delegate?.glasses(connection!, didCaptureJPEG: jpeg)
+                if camera.isMovieMode {
+                    connection?.delegate?.glasses(connection!, didReceiveStreamFrame: jpeg, frameId: camera.streamFrameCount)
+                } else {
+                    connection?.delegate?.glasses(connection!, didCaptureJPEG: jpeg)
+                }
             }
             
         case (.ready, 0x3a):  // Accelerometer
@@ -118,6 +126,14 @@ internal actor ProtocolActor {
             
         case (.ready, 0xbd):  // Magnetometer
             let reading = sensors.handleMagnetometer(frame.payload)
+            connection?.delegate?.glasses(connection!, didReceiveSensorData: reading)
+            
+        case (.ready, 0x3b):  // Light sensor
+            let reading = sensors.handleLight(frame.payload)
+            connection?.delegate?.glasses(connection!, didReceiveSensorData: reading)
+            
+        case (.ready, 0xbb):  // Rotation vector
+            let reading = sensors.handleAccelerometer(frame.payload)  // same SIMD3 format
             connection?.delegate?.glasses(connection!, didReceiveSensorData: reading)
             
         default:

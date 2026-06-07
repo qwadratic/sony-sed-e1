@@ -96,7 +96,7 @@ public final class GlassesConnection: @unchecked Sendable {
         let transport = TransportActor()
         let display = DisplaySubsystem(transport: transport)
         let camera = CameraSubsystem(transport: transport)
-        let sensors = SensorSubsystem()
+        let sensors = SensorSubsystem(transport: transport)
         let input = InputSubsystem()
         
         self.transport = transport

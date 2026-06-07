@@ -11,10 +11,8 @@ public enum DisplayConstants {
 // MARK: - Camera
 
 public enum CameraMode: UInt8, Sendable {
-    case still = 0
-    case stillToFile = 1
-    case streamLowRate = 2   // ~7.5 fps
-    case streamHighRate = 3  // ~15 fps
+    case still = 0    // single frame capture
+    case movie = 1    // continuous JPEG stream
 }
 
 public enum CameraResolution: UInt8, Sendable {
@@ -36,19 +34,30 @@ public enum CameraQuality: UInt8, Sendable {
 
 // MARK: - Sensors
 
+public enum SensorType: UInt8, Sendable {
+    case accelerometer = 0x01
+    case magnetometer = 0x02
+    case gyroscope = 0x04
+    case light = 0x05
+    case camera = 0x13
+}
+
 public struct SensorReading: Sendable {
     public var accelerometer: SIMD3<Float>
     public var gyroscope: SIMD3<Float>
     public var magnetometer: SIMD3<Float>
+    public var light: Float
     public var timestamp: UInt64
     
     public init(accelerometer: SIMD3<Float> = .zero,
                 gyroscope: SIMD3<Float> = .zero,
                 magnetometer: SIMD3<Float> = .zero,
+                light: Float = 0,
                 timestamp: UInt64 = 0) {
         self.accelerometer = accelerometer
         self.gyroscope = gyroscope
         self.magnetometer = magnetometer
+        self.light = light
         self.timestamp = timestamp
     }
 }

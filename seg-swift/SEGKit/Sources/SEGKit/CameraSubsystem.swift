@@ -11,6 +11,12 @@ public final class CameraSubsystem: @unchecked Sendable {
     internal var nextExpectedSeq = 0
     internal var onCapture: ((Data) -> Void)?
     internal var onError: ((Int) -> Void)?
+    private var currentMode: CameraMode = .still
+    internal private(set) var streamFrameCount = 0
+    internal var lastError: Int? = nil
+
+    public var isStreaming: Bool { currentMode == .movie && capturing }
+    internal var isMovieMode: Bool { currentMode == .movie }
     
     internal init(transport: TransportActor) {
         self.transport = transport
@@ -22,6 +28,7 @@ public final class CameraSubsystem: @unchecked Sendable {
         resolution: CameraResolution = .qvga,
         quality: CameraQuality = .standard
     ) async {
+        currentMode = mode
         await transport.send([
             0xce, 0x00, 0x04,
             mode.rawValue, resolution.rawValue, quality.rawValue, 0x00
@@ -48,7 +55,7 @@ public final class CameraSubsystem: @unchecked Sendable {
         resolution: CameraResolution = .qvga,
         quality: CameraQuality = .standard
     ) async {
-        await setMode(.streamHighRate, resolution: resolution, quality: quality)
+        await setMode(.movie, resolution: resolution, quality: quality)
         try? await Task.sleep(for: .milliseconds(300))
         await transport.send([0x38, 0x00, 0x04, 0x13, 0x06, 0x00, 0x00],
                              label: "SensorStart(camera)")
@@ -74,6 +81,7 @@ public final class CameraSubsystem: @unchecked Sendable {
             nextExpectedSeq = 0
             capturing = true
         } else {
+            lastError = Int(status)
             onError?(Int(status))
         }
     }
@@ -92,6 +100,9 @@ public final class CameraSubsystem: @unchecked Sendable {
         capturing = false
         let jpeg = accumulator
         accumulator = Data()
+        if currentMode == .movie {
+            streamFrameCount += 1
+        }
         return jpeg.isEmpty ? nil : jpeg
     }
 }

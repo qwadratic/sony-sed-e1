@@ -204,4 +204,100 @@ final class SEGKitTests: XCTestCase {
         // cmdId=0xe5, payload=[0x03, 0x02] → .swipeRight
         XCTAssertEqual(input.parseEvent(cmdId: 0xe5, payload: Data([0x03, 0x02])), .swipeRight)
     }
+    
+    // MARK: - Phase 3 Tests
+    
+    func testCameraModeEnum() {
+        XCTAssertEqual(CameraMode.still.rawValue, 0)
+        XCTAssertEqual(CameraMode.movie.rawValue, 1)
+    }
+    
+    func testCameraStreamFlow() {
+        let transport = TransportActor()
+        let cam = CameraSubsystem(transport: transport)
+        
+        // 0xb5 response: status=0, format=0, jpeg_size=15 (LE), field4=0
+        var resp = Data([0x00, 0x00])                        // status=0, format=0
+        resp.append(contentsOf: [0x0f, 0x00, 0x00, 0x00])   // size=15 LE
+        resp.append(contentsOf: [0x00, 0x00, 0x00, 0x00])   // field4=0
+        cam.handleCaptureResponse(resp)
+        XCTAssertTrue(cam.capturing, "Should be capturing after status=0 response")
+        
+        // 0xb6 chunk seq=0: 8 bytes of data
+        var chunk0 = Data([0x00])                            // seq=0
+        chunk0.append(contentsOf: [0x08, 0x00])              // len=8 LE
+        chunk0.append(contentsOf: [0xFF, 0xD8, 0xFF, 0xE0, 0x00, 0x10, 0x4A, 0x46])
+        let ack0 = cam.handleChunk(chunk0)
+        XCTAssertNotNil(ack0, "Should return ACK for chunk 0")
+        XCTAssertEqual(ack0, [0xf1, 0x00, 0x01, 0x00])
+        
+        // 0xb6 chunk seq=1: 7 bytes of data
+        var chunk1 = Data([0x01])                            // seq=1
+        chunk1.append(contentsOf: [0x07, 0x00])              // len=7 LE
+        chunk1.append(contentsOf: [0x49, 0x46, 0x00, 0x01, 0x01, 0x00, 0x48])
+        let ack1 = cam.handleChunk(chunk1)
+        XCTAssertNotNil(ack1, "Should return ACK for chunk 1")
+        XCTAssertEqual(ack1, [0xf1, 0x00, 0x01, 0x01])
+        
+        // 0xb7 done
+        let donePayload = Data([0x00, 0x02, 0x0f, 0x00, 0x00, 0x00])
+        let jpeg = cam.handleDone(donePayload)
+        XCTAssertNotNil(jpeg, "handleDone should return assembled JPEG")
+        XCTAssertEqual(jpeg!.count, 15, "Should have accumulated 15 bytes")
+    }
+    
+    func testCameraErrorStatus() {
+        let transport = TransportActor()
+        let cam = CameraSubsystem(transport: transport)
+        
+        // 0xb5 response with status=1 (error)
+        var resp = Data([0x01, 0x00])                        // status=1 (error)
+        resp.append(contentsOf: [0x00, 0x00, 0x00, 0x00])   // size=0
+        resp.append(contentsOf: [0x00, 0x00, 0x00, 0x00])   // field4=0
+        cam.handleCaptureResponse(resp)
+        
+        XCTAssertEqual(cam.lastError, 1, "lastError should be 1 after error response")
+        XCTAssertFalse(cam.capturing, "capturing should be false after error")
+    }
+    
+    func testSensorLightParsing() {
+        let transport = TransportActor()
+        let sensor = SensorSubsystem(transport: transport)
+        
+        // Build 4-byte float payload for 500.0
+        var payload = Data(count: 4)
+        var value: Float = 500.0
+        withUnsafeBytes(of: &value) { buf in
+            payload = Data(buf)
+        }
+        
+        let reading = sensor.handleLight(payload)
+        XCTAssertEqual(reading.light, 500.0, accuracy: 0.01,
+                       "Light sensor should parse 500.0")
+        XCTAssertEqual(sensor.current.light, 500.0, accuracy: 0.01)
+    }
+    
+    func testSensorReadingStruct() {
+        let accel = SIMD3<Float>(1.0, 2.0, 3.0)
+        let gyro  = SIMD3<Float>(4.0, 5.0, 6.0)
+        let mag   = SIMD3<Float>(7.0, 8.0, 9.0)
+        let reading = SensorReading(
+            accelerometer: accel,
+            gyroscope: gyro,
+            magnetometer: mag,
+            light: 42.0,
+            timestamp: 1234567890
+        )
+        
+        XCTAssertEqual(reading.accelerometer, accel)
+        XCTAssertEqual(reading.gyroscope, gyro)
+        XCTAssertEqual(reading.magnetometer, mag)
+        XCTAssertEqual(reading.light, 42.0, accuracy: 0.01)
+        XCTAssertEqual(reading.timestamp, 1234567890)
+    }
+    
+    func testSensorTypeEnum() {
+        XCTAssertEqual(SensorType.accelerometer.rawValue, 0x01)
+        XCTAssertEqual(SensorType.camera.rawValue, 0x13)
+    }
 }
