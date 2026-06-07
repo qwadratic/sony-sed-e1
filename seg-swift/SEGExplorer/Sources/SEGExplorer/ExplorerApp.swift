@@ -133,9 +133,12 @@ final class ExplorerApp: GlassesDelegate, @unchecked Sendable {
     
     // MARK: - REPL
 
+    private let logLevels: [LogLevel] = [.silent, .normal, .verbose, .debug]
+    private var logLevelIndex = 1  // start at .normal
+
     func startREPL() {
         DispatchQueue.global(qos: .userInteractive).async { [self] in
-            print("REPL: [0-7] select demo, [t] tap, [m] menu, [q] quit")
+            print("REPL: [0-7] demo, [t] tap, [m] menu, [d] debug level, [q] quit")
             while let line = readLine() {
                 let cmd = line.trimmingCharacters(in: .whitespaces)
                 Task {
@@ -149,11 +152,16 @@ final class ExplorerApp: GlassesDelegate, @unchecked Sendable {
                         await self.activeDemo?.onTap()
                     case "m":
                         await self.exitDemo()
+                    case "d":
+                        self.logLevelIndex = (self.logLevelIndex + 1) % self.logLevels.count
+                        let newLevel = self.logLevels[self.logLevelIndex]
+                        self.glasses.eventLog.level = newLevel
+                        print("\n─── Log level: \(newLevel) ───\n")
                     case "q":
                         await self.glasses.disconnect()
                         exit(0)
                     default:
-                        print("Unknown: \(cmd)")
+                        print("Unknown: \(cmd). [0-7] demo, [t] tap, [m] menu, [d] debug, [q] quit")
                     }
                 }
             }

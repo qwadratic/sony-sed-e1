@@ -258,5 +258,8 @@ public final class GlassesConnection: @unchecked Sendable {
             sensors: sensors,
             input: input
         )
+        
+        // Wire event log to transport so TX/RX are logged
+        Task { await transport.setEventLog(eventLog) }
     }
 }

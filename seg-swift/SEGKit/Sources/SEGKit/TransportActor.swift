@@ -18,6 +18,11 @@ internal actor TransportActor {
     private var btChannel: IOBluetoothRFCOMMChannel?
     
     private var frameHandler: ((WireFrame) async -> Void)?
+    var eventLog: EventLogger?
+    
+    func setEventLog(_ log: EventLogger) {
+        self.eventLog = log
+    }
     
     func setFrameHandler(_ handler: @escaping (WireFrame) async -> Void) {
         self.frameHandler = handler
@@ -25,18 +30,21 @@ internal actor TransportActor {
     
     /// Receive raw bytes from BT RFCOMM callback.
     func receiveBT(_ data: Data) async {
+        eventLog?.debug("BT rx \(data.count)B (buf=\(btRxBuf.count))")
         btRxBuf.append(data)
         btRxBuf = await drainFrames(buffer: btRxBuf)
     }
     
     /// Receive raw bytes from WiFi/Local TCP.
     func receiveTCP(_ data: Data) async {
+        eventLog?.debug("TCP rx \(data.count)B (buf=\(wifiRxBuf.count))")
         wifiRxBuf.append(data)
         wifiRxBuf = await drainFrames(buffer: wifiRxBuf)
     }
     
     /// Send bytes over the primary transport.
     func send(_ bytes: [UInt8], label: String) {
+        eventLog?.logTX(bytes, label: label)
         let data = Data(bytes)
         if wifiActive || localFd >= 0 {
             let fd = localFd >= 0 ? localFd : wifiClientFd
@@ -93,6 +101,7 @@ internal actor TransportActor {
                 cmdId: buf[0],
                 payload: Data(buf[3..<total])
             )
+            eventLog?.logRX(cmdId: frame.cmdId, payload: frame.payload)
             buf = Data(buf[total...])
             await frameHandler?(frame)
         }

@@ -24,6 +24,24 @@ if let idx = args.firstIndex(of: "--address"), idx + 1 < args.count {
     btMode = true
 }
 
+// Parse --debug / --verbose / --silent
+let debugLevel: LogLevel
+if args.contains("--debug") {
+    debugLevel = .debug
+} else if args.contains("--verbose") {
+    debugLevel = .verbose
+} else if args.contains("--silent") {
+    debugLevel = .silent
+} else {
+    debugLevel = .normal
+}
+
+// Force line-buffered stdout for piped/redirected output
+setbuf(stdout, nil)
+
+app.glasses.eventLog.level = debugLevel
+print("Log level: \(debugLevel)")
+
 Task {
     if let host = localHost {
         print("Connecting to \(host):\(localPort)...")
