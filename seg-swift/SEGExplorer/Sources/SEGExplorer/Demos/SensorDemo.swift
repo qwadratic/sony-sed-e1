@@ -14,6 +14,10 @@ final class SensorDemo: Demo {
             accelerometer: SIMD3<Float>(0, 9.81, 0),
             gyroscope: .zero
         )
+        // Start sensor streams from glasses hardware
+        await glasses.sensors.start(.accelerometer)
+        await glasses.sensors.start(.gyroscope)
+        await glasses.sensors.start(.magnetometer)
         await render()
     }
     
@@ -29,7 +33,12 @@ final class SensorDemo: Demo {
     }
     
     func onSwipe(_ direction: InputEvent) async {}
-    func onExit() async { glasses = nil }
+    func onExit() async {
+        await glasses?.sensors.stop(.accelerometer)
+        await glasses?.sensors.stop(.gyroscope)
+        await glasses?.sensors.stop(.magnetometer)
+        glasses = nil
+    }
     
     /// Called by the app controller when sensor data arrives from GlassesDelegate.
     func updateSensorData(_ reading: SensorReading) async {
