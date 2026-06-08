@@ -1,0 +1,9 @@
+rootProject.name = 'SmartEyeglassExplorer'
+include ':app'
+include ':SmartExtensionAPI'
+include ':SmartExtensionUtils'
+include ':SmartEyeglassAPI'
+
+project(':SmartExtensionAPI').projectDir = file('libs/SmartExtensionAPI')
+project(':SmartExtensionUtils').projectDir = file('libs/SmartExtensionUtils')
+project(':SmartEyeglassAPI').projectDir = file('libs/SmartEyeglassAPI')
