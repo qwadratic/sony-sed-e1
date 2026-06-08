@@ -9,13 +9,6 @@ __pycache__/
 node_modules/
 .monitor/
 
-# Java/Gradle build artifacts
-.gradle/
-build/
-*.class
-*.dex
-*.jar
-local.properties
-
-# Sony embedded repo (tracked as plain files)
-Sony/.git
+# Reference code — kept locally, not tracked in git
+Sony/
+_dev/
