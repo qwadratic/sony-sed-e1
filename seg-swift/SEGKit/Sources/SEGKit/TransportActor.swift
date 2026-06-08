@@ -9,7 +9,7 @@ internal struct WireFrame: Sendable {
 
 /// Transport actor — owns BT + WiFi + Local TCP connections.
 /// Each transport has its OWN reassembly buffer (actor-isolated).
-internal actor TransportActor {
+public actor TransportActor {
     private var btRxBuf = Data()
     private var wifiRxBuf = Data()
     private var localFd: Int32 = -1
@@ -42,8 +42,8 @@ internal actor TransportActor {
         wifiRxBuf = await drainFrames(buffer: wifiRxBuf)
     }
     
-    /// Send bytes over the primary transport.
-    func send(_ bytes: [UInt8], label: String) {
+    /// Send raw bytes over the primary transport.
+    public func send(_ bytes: [UInt8], label: String) {
         eventLog?.logTX(bytes, label: label)
         let data = Data(bytes)
         if wifiActive || localFd >= 0 {

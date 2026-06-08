@@ -1,51 +1,21 @@
-# Dev scratch / research (gitignored, stays local)
-_dev/
+.DS_Store
+.build/
+.env
+*.apk
+.fallow/
+.venv/
+__pycache__/
+.pytest_cache/
+node_modules/
+.monitor/
 
-# Build artifacts
-build/
+# Java/Gradle build artifacts
 .gradle/
-local.properties
+build/
 *.class
 *.dex
-*.o
+*.jar
+local.properties
 
-# APKs (large binaries, not source)
-*.apk
-
-# SDK (external, large)
-Sony/
-
-# IDE
-.idea/
-*.iml
-.vscode/
-
-# macOS
-.DS_Store
-
-# Compiled binary
-macos-middleware/glasses-tool
-
-# User config (copy from glasses.conf.example)
-macos-middleware/glasses.conf
-
-# Harness build artifacts
-harness/dist/
-harness/node_modules/
-
-# Secrets
-.env
-
-# Temp / debug
-*.log
-*.bin
-*.ips
-*.mcap*
-/tmp/
-__pycache__/
-progress.md
-
-# Session monitor
-.monitor/
-seg-swift/SEGKit/.build/
-seg-swift/SEGExplorer/.build/
+# Sony embedded repo (tracked as plain files)
+Sony/.git

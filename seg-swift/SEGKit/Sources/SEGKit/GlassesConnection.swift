@@ -32,7 +32,8 @@ public final class GlassesConnection: @unchecked Sendable {
     public internal(set) var phase: ConnectionPhase = .disconnected
     
     // Internal actors — NOT public
-    internal let transport: TransportActor
+    // Public for raw wire access (advanced/debug use)
+    public let transport: TransportActor
     internal let protocol_sm: ProtocolActor
     
     /// Strong reference to keep the BT bridge alive during connection.

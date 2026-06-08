@@ -166,8 +166,25 @@ final class ExplorerApp: GlassesDelegate, @unchecked Sendable {
                     case "q":
                         await self.glasses.disconnect()
                         exit(0)
+                    case _ where cmd.hasPrefix("raw "):
+                        // raw HEX send: "raw c3 00 01 01"
+                        let hexStr = String(cmd.dropFirst(4))
+                        let bytes = hexStr.split(separator: " ").compactMap { UInt8($0, radix: 16) }
+                        if !bytes.isEmpty {
+                            await self.glasses.transport.send(bytes, label: "RAW")
+                            print("  → RAW [\(bytes.count)B] \(bytes.map{String(format:"%02x",$0)}.joined(separator:" "))")
+                        }
+                    case "ar":
+                        // Quick AR mode test
+                        print("Entering AR mode...")
+                        await self.glasses.transport.send([0xc3, 0x00, 0x01, 0x01], label: "SetRenderMode(AR)")
+                        print("  → AR mode set. Glasses should switch to AR rendering.")
+                    case "normal":
+                        // Back to normal mode
+                        await self.glasses.transport.send([0xc3, 0x00, 0x01, 0x00], label: "SetRenderMode(NORMAL)")
+                        print("  → Normal mode restored.")
                     default:
-                        print("Unknown: \(cmd). [0-8] demo, [t] tap, [m] menu, [d] debug, [q] quit")
+                        print("Unknown: \(cmd). [0-8] demo, [t] tap, [m] menu, [d] debug, [ar] AR mode, [raw XX] hex, [q] quit")
                     }
                 }
             }
