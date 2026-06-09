@@ -13,8 +13,10 @@ public final class InputSubsystem: @unchecked Sendable {
             return .tap
         case 0xe5:  // LayoutEventNotify
             guard payload.count >= 2 else { return nil }
-            // eventType is a 16-bit value, but all known types fit in first byte
-            let eventType = payload[0]
+            // Wire: e5 [len_hi] [len_lo] [00] [eventType] [00] [00]
+            // After frame parsing, payload = [00] [eventType] [00] [00]
+            // The event type is at payload[1] (second byte)
+            let eventType = payload.count >= 2 ? payload[1] : payload[0]
             switch eventType {
             // Jog dial
             case 0x01: return .jogPress
