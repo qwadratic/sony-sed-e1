@@ -197,54 +197,46 @@ final class ExplorerApp: GlassesDelegate, @unchecked Sendable {
 
     // MARK: - Pi Logo Boot Screen
     
-    private func renderPiLogo() async {
+    /// Draw the Pi favicon (pixel-art staircase P + dot) from pi.dev/favicon.svg
+    func renderPiLogo(at logoX: Int? = nil, logoY: Int? = nil) async {
         fb.clear()
+        drawPiLogo(at: logoX, logoY: logoY)
+        await glasses.display.show(fb.pixels)
+    }
+    
+    /// Draw Pi logo into framebuffer without sending. Returns logo bounds.
+    @discardableResult
+    func drawPiLogo(at logoX: Int? = nil, logoY: Int? = nil) -> (x: Int, y: Int, size: Int) {
+        // Pi favicon.svg: 800x800 viewBox, pixel-art staircase P + dot
+        // SVG coords: 165.29, 282.65, 400, 517.36, 634.72 (unit=117.36)
+        let logoSize = 110
+        let s = { (v: Double) -> Int in Int(v * Double(logoSize) / 800.0) }
         
-        // Draw large π symbol centered using scaled pixel art
-        // The TextRenderer font is 5x7 — we'll draw a 10x scaled π
-        let scale = 10
-        // π glyph from font data: columns [0x01, 0x01, 0x7F, 0x01, 0x01]
-        // But that's a 'T' shape. Better: draw π using line primitives.
-        //
-        // π shape (pixel art, 7 wide x 7 tall):
-        //  _______
-        //  | | | |
-        //    |   |
-        //    |   |
-        //    |   |
-        //   _|  _|
+        let ox = logoX ?? (fb.width - logoSize) / 2
+        let oy = logoY ?? (fb.height - logoSize) / 2
         
-        let piW = 7 * scale  // 70px wide
-        let piH = 7 * scale  // 70px tall
-        let ox = (fb.width - piW) / 2   // center x
-        let oy = (fb.height - piH) / 2 - 10  // center y, shifted up for text below
+        // Rounded background
+        fb.fillRect(x: ox, y: oy, w: logoSize, h: logoSize, value: 25)
         
-        // Top bar (full width)
-        fb.fillRect(x: ox, y: oy, w: piW, h: scale, value: 255)
+        // P staircase (outer shape as rects)
+        // Top bar: (165,165) to (517,282)
+        fb.fillRect(x: ox+s(165.29), y: oy+s(165.29), w: s(517.36)-s(165.29), h: s(282.65)-s(165.29), value: 255)
+        // Left col row1: (165,282) to (282,400)
+        fb.fillRect(x: ox+s(165.29), y: oy+s(282.65), w: s(282.65)-s(165.29), h: s(400)-s(282.65), value: 255)
+        // Right arm row1: (400,282) to (517,400)
+        fb.fillRect(x: ox+s(400), y: oy+s(282.65), w: s(517.36)-s(400), h: s(400)-s(282.65), value: 255)
+        // Left col row2: (165,400) to (282,517)
+        fb.fillRect(x: ox+s(165.29), y: oy+s(400), w: s(282.65)-s(165.29), h: s(517.36)-s(400), value: 255)
+        // Left col row3: (165,517) to (282,634)
+        fb.fillRect(x: ox+s(165.29), y: oy+s(517.36), w: s(282.65)-s(165.29), h: s(634.72)-s(517.36), value: 255)
         
-        // Left leg
-        let legW = scale + scale / 2  // slightly thicker
-        fb.fillRect(x: ox + piW / 2 - piW / 3 - legW / 2, y: oy + scale, w: legW, h: piH - scale, value: 255)
-        
-        // Right leg
-        fb.fillRect(x: ox + piW / 2 + piW / 3 - legW / 2, y: oy + scale, w: legW, h: piH - scale, value: 255)
-        
-        // Small serifs/feet at bottom of legs
-        let footW = legW + scale / 2
-        let legLx = ox + piW / 2 - piW / 3 - legW / 2
-        let legRx = ox + piW / 2 + piW / 3 - legW / 2
-        // Left foot curves left
-        fb.fillRect(x: legLx - scale / 2, y: oy + piH - scale, w: footW, h: scale / 2, value: 255)
-        // Right foot curves right
-        fb.fillRect(x: legRx, y: oy + piH - scale, w: footW, h: scale / 2, value: 255)
+        // Dot: (517,400) to (634,634)
+        fb.fillRect(x: ox+s(517.36), y: oy+s(400), w: s(634.72)-s(517.36), h: s(634.72)-s(400), value: 255)
         
         // "pi.dev" text bottom-right
-        TextRenderer.drawText("pi.dev", x: fb.width - 42, y: fb.height - 10, on: fb, value: 128)
+        TextRenderer.drawText("pi.dev", x: fb.width - 42, y: fb.height - 10, on: fb, value: 100)
         
-        // "SEGKit" text bottom-left
-        TextRenderer.drawText("SEGKit", x: 4, y: fb.height - 10, on: fb, value: 80)
-        
-        await glasses.display.show(fb.pixels)
+        return (ox, oy, logoSize)
     }
     
     // MARK: - Menu
