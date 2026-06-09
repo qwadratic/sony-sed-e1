@@ -104,7 +104,38 @@ Capture all sensor streams + camera into industry-standard [MCAP](https://mcap.d
 | Sensor visualization | Real-time IMU display on glasses — react to head movement |
 | Calibration | Magnetometer calibration dance (figure-8 motion detection) |
 
-## Priority 5: Display Enhancements
+## Priority 5: Voice & Audio
+
+The glasses have a microphone and speaker accessible via Bluetooth HFP (Hands-Free Profile) on RFCOMM channel 1.
+
+### Push-to-Talk (PTT)
+- Hardware PTT button sends `0x0b` (press) and `0x0c` (release) via `0xe5`
+- Hold PTT → stream microphone audio over BT HFP channel
+- Release PTT → stop recording
+- Audio format: likely SCO 8kHz/16kHz PCM (standard HFP)
+
+### Voice-to-Text
+- Java SDK has `VOICE_TEXT_INPUT_ENABLE` / `VOICE_TEXT_INPUT_NOTIFY_RECOGNIZED_TEXT_EVENT`
+- Sony's original flow: PTT → record → send audio to phone → phone does STT → result back to glasses
+- Our flow: PTT → record via HFP SCO → pipe to Whisper/local STT → display result on glasses
+- Result codes: `VOICE_TEXT_INPUT_RESULT_OK (0)`, `FAILED (1)`, `CANCEL (2)`
+
+### Text-to-Speech (TTS)
+- Reverse path: text → macOS `say` or system TTS → audio over HFP SCO → glasses speaker
+- Could enable AI assistant responses audible through glasses
+
+### Audio Recording
+- Current `AudioDemo` uses `ffmpeg` to capture from system mic
+- Need to route HFP SCO channel specifically (glasses mic, not Mac mic)
+- BT HFP channel 1 confirmed present in SDP (`[7, 1, 7, 4]` — ch1 sends AT commands)
+- Need to establish SCO link for actual audio data
+
+### Integration Ideas
+- PTT → Whisper STT → LLM → TTS → glasses speaker (full voice assistant loop)
+- PTT → record → save as WAV alongside MCAP sensor data
+- Live audio level meter displayed on glasses while recording
+
+## Priority 6: Display Enhancements
 
 | Feature | Wire Details |
 |---------|-------------|
@@ -114,7 +145,7 @@ Capture all sensor streams + camera into industry-standard [MCAP](https://mcap.d
 | Layer transitions | moveLowerLayer / moveUpperLayer — slide animations |
 | Display callbacks | Transaction number in 0xe8 ACK — confirms which frame rendered |
 
-## Priority 6: Input & Lifecycle
+## Priority 7: Input & Lifecycle
 
 | Feature | Notes |
 |---------|-------|
@@ -123,7 +154,7 @@ Capture all sensor streams + camera into industry-standard [MCAP](https://mcap.d
 | Pause/resume | displayOff → pause rendering, displayOn → resume |
 | Screen state control | `0x3d` — on/off/dim/auto |
 
-## Priority 7: Firmware Exploration
+## Priority 8: Firmware Exploration
 
 ### DFU Mode
 - `ENTER_DFU_MODE` command exists in the APK DEX
