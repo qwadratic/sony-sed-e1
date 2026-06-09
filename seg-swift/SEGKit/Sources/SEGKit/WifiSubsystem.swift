@@ -64,10 +64,16 @@ public final class WifiSubsystem: @unchecked Sendable {
         }
         // Send 0 to let glasses auto-detect channel (firmware may ignore our hint)
         // Use actual 2.4GHz frequency — glasses firmware may not support auto-scan (freq=0)
-        let psk = derivePSK(ssid: ssid, passphrase: passphrase)
-        guard !psk.isEmpty else {
-            print("  [wifi] PSK derivation failed")
-            return false
+        let psk: String
+        if passphrase.isEmpty {
+            psk = ""  // Open network — no PSK
+            print("  [wifi] Open network (no PSK)")
+        } else {
+            psk = derivePSK(ssid: ssid, passphrase: passphrase)
+            guard !psk.isEmpty else {
+                print("  [wifi] PSK derivation failed")
+                return false
+            }
         }
 
         let req = buildWifiConnectReq(ssid: ssid, passphrase: passphrase, psk: psk,
