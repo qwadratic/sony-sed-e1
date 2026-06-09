@@ -62,7 +62,49 @@ elevation = atan2(altitude_diff, distance)
 - `AR_RESULT_ERROR_MEMORY_SHORTAGE (2)`
 - `AR_RESULT_ERROR_SYSTEM (3)`
 
-## Priority 3: Display Enhancements
+## Priority 3: Sensor Recording & MCAP Export
+
+Capture all sensor streams + camera into industry-standard [MCAP](https://mcap.dev/) files for offline analysis, replay, and integration with tools like Foxglove Studio.
+
+### Streams to record
+| Channel | Source | Format | Rate |
+|---------|--------|--------|------|
+| `/imu/accel` | Accelerometer (0x3a) | 3× float32 (x,y,z) m/s² | up to ~100Hz |
+| `/imu/gyro` | Gyroscope (0xbc) | 3× float32 (x,y,z) rad/s | up to ~100Hz |
+| `/imu/mag` | Magnetometer (0xbd) | 3× float32 (x,y,z) μT | up to ~100Hz |
+| `/imu/rotation` | Rotation vector (0xbb) | 3-4× float32 | up to ~100Hz |
+| `/sensor/light` | Ambient light (0x3b) | 1× float32 lux | ~10Hz |
+| `/sensor/battery` | Battery (0x3e) | level % + timestamp | ~1Hz |
+| `/camera/jpeg` | Camera capture/stream | JPEG frames | 7.5–15fps (theoretical) |
+| `/input/events` | Touch, swipe, buttons | event type + timestamp | on-demand |
+| `/display/frames` | Outgoing display bitmaps | 419×138 grayscale | on-demand |
+
+### Camera video pipeline
+- JPEG frames from camera stream → pipe through `ffmpeg` for:
+  - H.264/H.265 MP4 recording
+  - Real-time preview via named pipe
+  - Frame rate measurement (actual vs theoretical 15fps limit)
+- **Benchmark real FPS** — the 15fps limit is from the Java SDK constant `CAMERA_MODE_JPG_STREAM_HIGH_RATE`. Actual throughput over WiFi TCP may be higher or lower. Need to measure with timestamps on each `0xb6` frame.
+
+### MCAP file format
+- One `.mcap` file per recording session
+- All channels time-synchronized via glasses timestamps
+- Schema: Protobuf or JSON schema per channel
+- Playback: Foxglove Studio, custom Python readers
+- Goal: record 5-minute walks with full IMU + camera for SLAM/VIO research
+
+## Priority 4: Sensor Completeness
+
+| Feature | Detail |
+|---------|--------|
+| Fix rotation vector handler | `0xbb` currently calls `handleAccelerometer()` — data corruption |
+| Battery ACK | Send `[0x01,0x00,0x00]` after `0x3e` (missing, all other sensors have it) |
+| Accuracy tracking | Parse first 4 bytes of sensor payload as accuracy enum |
+| Rate control | Rate byte in `0x38` SensorStart: fastest(1), game(2), normal(3), ui(4) |
+| Sensor visualization | Real-time IMU display on glasses — react to head movement |
+| Calibration | Magnetometer calibration dance (figure-8 motion detection) |
+
+## Priority 5: Display Enhancements
 
 | Feature | Wire Details |
 |---------|-------------|
@@ -72,7 +114,7 @@ elevation = atan2(altitude_diff, distance)
 | Layer transitions | moveLowerLayer / moveUpperLayer — slide animations |
 | Display callbacks | Transaction number in 0xe8 ACK — confirms which frame rendered |
 
-## Priority 4: Input & Lifecycle
+## Priority 6: Input & Lifecycle
 
 | Feature | Notes |
 |---------|-------|
@@ -81,7 +123,7 @@ elevation = atan2(altitude_diff, distance)
 | Pause/resume | displayOff → pause rendering, displayOn → resume |
 | Screen state control | `0x3d` — on/off/dim/auto |
 
-## Priority 5: Firmware Exploration
+## Priority 7: Firmware Exploration
 
 ### DFU Mode
 - `ENTER_DFU_MODE` command exists in the APK DEX
