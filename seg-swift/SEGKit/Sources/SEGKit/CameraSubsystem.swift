@@ -15,8 +15,8 @@ public final class CameraSubsystem: @unchecked Sendable {
     internal private(set) var streamFrameCount = 0
     internal var lastError: Int? = nil
 
-    public var isStreaming: Bool { currentMode == .movie && capturing }
-    internal var isMovieMode: Bool { currentMode == .movie }
+    public var isStreaming: Bool { currentMode.isStreamMode && capturing }
+    internal var isStreamMode: Bool { currentMode.isStreamMode }
     
     internal init(transport: TransportActor) {
         self.transport = transport
@@ -29,10 +29,13 @@ public final class CameraSubsystem: @unchecked Sendable {
         quality: CameraQuality = .standard
     ) async {
         currentMode = mode
+        // Stream modes support ONLY QVGA (Java: CAMERA_JPEG_STREAM_SUPPORT_RESOLUTION)
+        let effectiveResolution: CameraResolution = mode.isStreamMode ? .qvga : resolution
+        // Wire: 0xce [len=4] [quality] [resolution] [mode] [fps]
         await transport.send([
             0xce, 0x00, 0x04,
-            mode.rawValue, resolution.rawValue, quality.rawValue, 0x00
-        ], label: "CameraSetMode")
+            quality.rawValue, effectiveResolution.rawValue, mode.rawValue, mode.fpsByte
+        ], label: "CameraSetMode(\(mode),res=\(effectiveResolution.rawValue),q=\(quality.rawValue),fps=\(mode.fpsByte))")
     }
     
     /// Capture a single still photo. Result delivered via GlassesDelegate.
@@ -51,11 +54,14 @@ public final class CameraSubsystem: @unchecked Sendable {
     }
     
     /// Start continuous JPEG stream.
+    /// - Parameter mode: `.streamLow` (7.5fps) or `.streamHigh` (15fps). Defaults to `.streamLow`.
+    /// - Note: Stream modes are always QVGA (320×240) regardless of resolution parameter.
     public func startStream(
-        resolution: CameraResolution = .qvga,
+        mode: CameraMode = .streamLow,
         quality: CameraQuality = .standard
     ) async {
-        await setMode(.movie, resolution: resolution, quality: quality)
+        let effectiveMode = mode.isStreamMode ? mode : .streamLow
+        await setMode(effectiveMode, resolution: .qvga, quality: quality)
         try? await Task.sleep(for: .milliseconds(300))
         await transport.send([0x38, 0x00, 0x04, 0x13, 0x06, 0x00, 0x00],
                              label: "SensorStart(camera)")
@@ -108,7 +114,7 @@ public final class CameraSubsystem: @unchecked Sendable {
         capturing = false
         let jpeg = accumulator
         accumulator = Data()
-        if currentMode == .movie {
+        if currentMode.isStreamMode {
             streamFrameCount += 1
         }
         return jpeg.isEmpty ? nil : jpeg

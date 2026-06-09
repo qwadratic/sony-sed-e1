@@ -11,8 +11,24 @@ public enum DisplayConstants {
 // MARK: - Camera
 
 public enum CameraMode: UInt8, Sendable {
-    case still = 0    // single frame capture
-    case movie = 1    // continuous JPEG stream
+    case still = 0           // Single JPEG capture via delegate callback
+    case stillToFile = 1     // Single JPEG saved to file (not implemented yet)
+    case streamLow = 2       // 7.5fps JPEG stream (QVGA only)
+    case streamHigh = 3      // 15fps JPEG stream (QVGA only)
+
+    /// Whether this mode produces continuous frames.
+    public var isStreamMode: Bool {
+        self == .streamLow || self == .streamHigh
+    }
+
+    /// FPS byte for the 0xce CameraSetMode wire command.
+    internal var fpsByte: UInt8 {
+        switch self {
+        case .streamLow:  return 0x07  // 7.5 fps
+        case .streamHigh: return 0x0f  // 15 fps
+        default:          return 0x00  // still modes
+        }
+    }
 }
 
 public enum CameraResolution: UInt8, Sendable {

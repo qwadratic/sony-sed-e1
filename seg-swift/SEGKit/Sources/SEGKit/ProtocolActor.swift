@@ -111,7 +111,7 @@ internal actor ProtocolActor {
         case (.ready, 0xb7):  // Camera done
             if let jpeg = camera.handleDone(frame.payload) {
                 connection?.eventLog.log("CAMERA", ["event": "captured", "bytes": jpeg.count])
-                if camera.isMovieMode {
+                if camera.isStreamMode {
                     connection?.delegate?.glasses(connection!, didReceiveStreamFrame: jpeg, frameId: camera.streamFrameCount)
                 } else {
                     connection?.delegate?.glasses(connection!, didCaptureJPEG: jpeg)

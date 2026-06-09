@@ -10,6 +10,7 @@ final class CameraStreamDemo: Demo {
     private var frameCount = 0
     private var startTime: ContinuousClock.Instant?
     private var sessionDir: String = ""
+    private var useHighRate = false  // toggle between streamLow (7.5fps) and streamHigh (15fps)
 
     func onEnter(glasses: GlassesConnection) async {
         self.glasses = glasses
@@ -34,7 +35,9 @@ final class CameraStreamDemo: Demo {
                 atPath: sessionDir, withIntermediateDirectories: true)
             print("[VIDEO] Recording to \(sessionDir)")
 
-            await glasses?.camera.startStream(resolution: .qvga, quality: .standard)
+            let mode: CameraMode = useHighRate ? .streamHigh : .streamLow
+            print("[VIDEO] Starting \(mode) stream")
+            await glasses?.camera.startStream(mode: mode, quality: .standard)
 
             fb.clear()
             TextRenderer.drawText("RECORDING...", x: 4, y: 4, on: fb)
@@ -65,7 +68,17 @@ final class CameraStreamDemo: Demo {
         }
     }
 
-    func onSwipe(_ direction: InputEvent) async {}
+    func onSwipe(_ direction: InputEvent) async {
+        // Swipe toggles between low/high rate (only when not streaming)
+        guard !streaming else { return }
+        useHighRate.toggle()
+        let label = useHighRate ? "HIGH (15fps)" : "LOW (7.5fps)"
+        fb.clear()
+        TextRenderer.drawText("CAMERA STREAM", x: 4, y: 4, on: fb)
+        TextRenderer.drawText("Rate: \(label)", x: 4, y: 30, on: fb)
+        TextRenderer.drawText("[tap] start  [swipe] toggle", x: 4, y: fb.height - 10, on: fb)
+        await glasses?.display.show(fb.pixels)
+    }
 
     func onExit() async {
         if streaming { await glasses?.camera.stop() }

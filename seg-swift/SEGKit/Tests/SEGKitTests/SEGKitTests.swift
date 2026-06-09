@@ -206,7 +206,18 @@ final class SEGKitTests: XCTestCase {
     
     func testCameraModeEnum() {
         XCTAssertEqual(CameraMode.still.rawValue, 0)
-        XCTAssertEqual(CameraMode.movie.rawValue, 1)
+        XCTAssertEqual(CameraMode.stillToFile.rawValue, 1)
+        XCTAssertEqual(CameraMode.streamLow.rawValue, 2)
+        XCTAssertEqual(CameraMode.streamHigh.rawValue, 3)
+        // Stream modes
+        XCTAssertTrue(CameraMode.streamLow.isStreamMode)
+        XCTAssertTrue(CameraMode.streamHigh.isStreamMode)
+        XCTAssertFalse(CameraMode.still.isStreamMode)
+        XCTAssertFalse(CameraMode.stillToFile.isStreamMode)
+        // FPS bytes
+        XCTAssertEqual(CameraMode.streamLow.fpsByte, 0x07)
+        XCTAssertEqual(CameraMode.streamHigh.fpsByte, 0x0f)
+        XCTAssertEqual(CameraMode.still.fpsByte, 0x00)
     }
     
     func testCameraStreamFlow() {
