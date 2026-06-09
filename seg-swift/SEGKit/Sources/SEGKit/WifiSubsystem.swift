@@ -23,8 +23,8 @@ public final class WifiSubsystem: @unchecked Sendable {
 
     /// Full WiFi upgrade sequence. Returns true if WiFi path is now active.
     public func upgrade() async -> Bool {
-        guard !ssid.isEmpty, !passphrase.isEmpty else {
-            print("  [wifi] No SSID/passphrase configured")
+        guard !ssid.isEmpty else {
+            print("  [wifi] No SSID configured")
             return false
         }
         guard let ip = getInterfaceIP("en0") else {
@@ -56,11 +56,15 @@ public final class WifiSubsystem: @unchecked Sendable {
         // Step 4: Derive PSK + build ConnectReq
         var channelMHz = detectWifiChannel()
         // SED-E1 only supports 802.11b/g/n 2.4GHz — if Mac is on 5GHz,
-        // force 2.4GHz channel 6 (2437 MHz). Glasses can't connect to 5GHz.
+        // scan for 2.4GHz channel of the same SSID, or default to strongest 2.4GHz.
         if channelMHz > 3000 {
-            print("  [wifi] Mac on 5GHz (\(channelMHz)MHz) — forcing 2.4GHz ch6 (2437MHz) for glasses")
-            channelMHz = 2437
+            let ch24 = detect24GHzChannel(ssid: ssid)
+            print("  [wifi] Mac on 5GHz (\(channelMHz)MHz) — using 2.4GHz \(ch24)MHz for glasses")
+            channelMHz = ch24
         }
+        // Send 0 to let glasses auto-detect channel (firmware may ignore our hint)
+        print("  [wifi] Sending freq=0 (auto) + hint=\(channelMHz)MHz")
+        let autoFreq = 0  // Let glasses scan all 2.4GHz channels
         let psk = derivePSK(ssid: ssid, passphrase: passphrase)
         guard !psk.isEmpty else {
             print("  [wifi] PSK derivation failed")
@@ -68,12 +72,12 @@ public final class WifiSubsystem: @unchecked Sendable {
         }
 
         let req = buildWifiConnectReq(ssid: ssid, passphrase: passphrase, psk: psk,
-                                       hostIP: ip, port: serverPort, channelMHz: channelMHz)
+                                       hostIP: ip, port: serverPort, channelMHz: autoFreq)
         state = .connecting
         await transport.send(req, label: "WifiConnectReq")
 
         // Wait for TCP accept (glasses connect to our server)
-        for _ in 0..<150 {  // 30 seconds max
+        for _ in 0..<300 {  // 60 seconds max
             try? await Task.sleep(for: .milliseconds(200))
             if state == .connected { break }
         }
@@ -132,26 +136,59 @@ public final class WifiSubsystem: @unchecked Sendable {
     internal func startAccept(ip: String) {
         let fd = serverFd
         let transport = self.transport
-        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
-            let clientFd = Darwin.accept(fd, nil, nil)
-            guard clientFd >= 0 else { return }
-            print("  [wifi] Glasses TCP connected! fd=\(clientFd)")
-
+        // No [weak self] — WifiSubsystem lives as long as GlassesConnection, no retain cycle risk.
+        // Using strong ref ensures state transitions complete even if accept takes a while.
+        DispatchQueue.global(qos: .userInitiated).async {
+            var clientAddr = sockaddr_in()
+            var addrLen = socklen_t(MemoryLayout<sockaddr_in>.size)
+            let clientFd = withUnsafeMutablePointer(to: &clientAddr) {
+                $0.withMemoryRebound(to: sockaddr.self, capacity: 1) {
+                    Darwin.accept(fd, $0, &addrLen)
+                }
+            }
+            guard clientFd >= 0 else {
+                let err = errno
+                print("  [wifi] TCP accept failed: errno=\(err) (\(String(cString: strerror(err))))")
+                return
+            }
+            
+            // Log client IP
+            let clientIP = "\(clientAddr.sin_addr.s_addr & 0xFF).\((clientAddr.sin_addr.s_addr >> 8) & 0xFF).\((clientAddr.sin_addr.s_addr >> 16) & 0xFF).\((clientAddr.sin_addr.s_addr >> 24) & 0xFF)"
+            print("  [wifi] Glasses TCP connected! fd=\(clientFd) from \(clientIP)")
+            
+            // Enable TCP keepalive to prevent connection dropping
+            var one: Int32 = 1
+            Darwin.setsockopt(clientFd, SOL_SOCKET, SO_KEEPALIVE, &one, socklen_t(MemoryLayout<Int32>.size))
+            // Disable Nagle for low latency
+            Darwin.setsockopt(clientFd, IPPROTO_TCP, TCP_NODELAY, &one, socklen_t(MemoryLayout<Int32>.size))
+            
+            // Set state SYNCHRONOUSLY before any async work — the upgrade() polling loop
+            // checks this from another thread, so it must be visible immediately.
+            self.state = .connected
+            
             Task {
                 await transport.setWiFiClient(clientFd)
-                self?.state = .connected
             }
 
             // WiFi read loop
             var buf = [UInt8](repeating: 0, count: 8192)
             while true {
                 let n = Darwin.read(clientFd, &buf, buf.count)
-                if n <= 0 { break }
+                if n <= 0 {
+                    if n < 0 {
+                        let err = errno
+                        print("  [wifi] TCP read error: errno=\(err) (\(String(cString: strerror(err))))")
+                    } else {
+                        print("  [wifi] TCP connection closed by glasses (EOF)")
+                    }
+                    break
+                }
                 let data = Data(buf[0..<n])
                 Task { await transport.receiveTCP(data) }
             }
-            print("  [wifi] WiFi TCP connection closed")
-            self?.state = .off
+            print("  [wifi] WiFi TCP connection closed, fd=\(clientFd)")
+            Darwin.close(clientFd)
+            self.state = .off
         }
     }
 
@@ -275,6 +312,53 @@ public final class WifiSubsystem: @unchecked Sendable {
             return 5000 + channel * 5
         }
         return 2437 // fallback ch6
+    }
+    
+    /// Scan for strongest 2.4GHz network matching SSID, or any 2.4GHz channel.
+    private func detect24GHzChannel(ssid: String) -> Int {
+        let proc = Process()
+        proc.executableURL = URL(fileURLWithPath: "/usr/sbin/system_profiler")
+        proc.arguments = ["SPAirPortDataType"]
+        let pipe = Pipe()
+        proc.standardOutput = pipe
+        proc.standardError = FileHandle.nullDevice
+        try? proc.run(); proc.waitUntilExit()
+        let output = String(data: pipe.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8) ?? ""
+        
+        // Parse all visible 2.4GHz networks and their channels
+        var best24Channel = 6  // default
+        var bestSignal = -999
+        var lines = output.split(separator: "\n").map { $0.trimmingCharacters(in: .whitespaces) }
+        
+        for i in 0..<lines.count {
+            if lines[i].hasPrefix("Channel:") && lines[i].contains("2GHz") {
+                // Extract channel number
+                let parts = lines[i].split(separator: " ")
+                guard parts.count >= 2, let ch = Int(parts[1]) else { continue }
+                
+                // Look for signal strength nearby
+                var signal = -80 // default if not found
+                for j in max(0, i-3)...min(lines.count-1, i+3) {
+                    if lines[j].hasPrefix("Signal / Noise:") {
+                        // "Signal / Noise: -49 dBm / -85 dBm"
+                        let sigParts = lines[j].split(separator: " ")
+                        if sigParts.count >= 4, let s = Int(sigParts[3]) {
+                            signal = s
+                        }
+                        break
+                    }
+                }
+                
+                if signal > bestSignal {
+                    bestSignal = signal
+                    best24Channel = ch
+                }
+            }
+        }
+        
+        let freq = channelToFrequency(best24Channel)
+        print("  [wifi] Best 2.4GHz: channel \(best24Channel) (\(freq)MHz) signal=\(bestSignal)dBm")
+        return freq
     }
 }
 
