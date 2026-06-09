@@ -1,73 +1,66 @@
 # Sony SED-E1 SmartEyeglass — Swift SDK
 
-SEGKit (SDK) + SEGExplorer (demo app) for Sony SmartEyeglass SED-E1.
-Reverse-engineered wire protocol, Bluetooth RFCOMM + WiFi transports, 9 demo apps with 1:1 Sony parity.
+Reverse-engineered Swift SDK for Sony SmartEyeglass SED-E1. Connects directly from macOS via Bluetooth RFCOMM — no Android phone or Sony HostApp needed.
+
+**SEGKit** (SDK library) + **SEGExplorer** (demo app with 9 interactive demos).
+
+> Wire protocol reverse-engineered from Sony's Android APKs via smali/DEX analysis.
+> Reference Java sources: [github.com/kaustubhcs/Sony](https://github.com/kaustubhcs/Sony)
+> Original APKs: [apkmirror.com/sony-semiconductor-solutions-corporation/smarteyeglass](https://www.apkmirror.com/apk/sony-semiconductor-solutions-corporation/smarteyeglass/) (two versions exist — unclear which matches the Java source)
 
 ## Quick Start
 
 ```bash
-# Build the SDK and explorer app
-cd seg-swift/SEGKit && swift build
-cd seg-swift/SEGExplorer && swift build
+# Build
+cd SEGKit && swift build
+cd SEGExplorer && swift build
 
 # Connect via Bluetooth (interactive device picker)
 swift run SEGExplorer --bt
 
-# Connect via TCP (emulator / ADB forward)
-swift run SEGExplorer --local localhost:7100
+# Connect to specific device
+swift run SEGExplorer --bt --address ac:9b:0a:37:a6:6b
+
+# Debug wire logging
+swift run SEGExplorer --bt --debug
 ```
 
 ## Architecture
 
 ```
-seg-swift/
-├── SEGKit/          # SDK — wire protocol, transports, subsystems
-│   └── Sources/SEGKit/
-│       ├── GlassesConnection.swift   # Public API entry point
-│       ├── ProtocolActor.swift       # Handshake FSM + frame routing
-│       ├── TransportActor.swift      # BT RFCOMM / WiFi TCP / local TCP
-│       ├── BluetoothBridge.swift     # IOBluetooth ↔ actor bridge
-│       ├── DisplaySubsystem.swift    # DEFLATE-compressed bitmap rendering
-│       ├── CameraSubsystem.swift     # JPEG capture + streaming
-│       ├── SensorSubsystem.swift     # IMU, light, battery sensors
-│       ├── InputSubsystem.swift      # Tap, swipe, jog wheel, buttons
-│       ├── WifiSubsystem.swift       # BT→WiFi upgrade path
-│       ├── CommandConstants.swift    # All 80+ wire command IDs
-│       ├── EventLogger.swift         # Persistent JSONL event logging
-│       └── PublicTypes.swift         # Shared types + enums
-└── SEGExplorer/     # Demo app — 9 demos exercising all SDK features
-    └── Sources/SEGExplorer/
-        ├── main.swift                # CLI entry + REPL
-        ├── ExplorerApp.swift         # Demo lifecycle manager
-        └── Demos/                    # Text, Animation, Graphics, Touch,
-                                      # Sensor, CameraCapture, CameraStream,
-                                      # AR, Audio
+SEGKit/                    # SDK library — wire protocol, transports, subsystems
+├── Sources/SEGKit/
+│   ├── GlassesConnection  # Public API entry point
+│   ├── ProtocolActor      # Handshake FSM + frame routing
+│   ├── TransportActor     # BT RFCOMM / WiFi TCP / local TCP
+│   ├── BluetoothBridge    # IOBluetooth ↔ actor bridge
+│   ├── DisplaySubsystem   # DEFLATE-compressed 419×138 monochrome bitmaps
+│   ├── CameraSubsystem    # JPEG capture + streaming
+│   ├── SensorSubsystem    # IMU, light, battery sensors
+│   ├── InputSubsystem     # Tap, swipe, jog wheel, buttons
+│   ├── WifiSubsystem      # BT→WiFi upgrade path
+│   ├── CommandConstants    # All 80+ wire command IDs
+│   └── EventLogger        # Persistent JSONL event logging
+
+SEGExplorer/               # Demo app — 9 demos exercising all SDK features
+├── Sources/SEGExplorer/
+│   ├── main.swift          # CLI entry + REPL
+│   ├── ExplorerApp.swift   # Onboarding + demo lifecycle
+│   └── Demos/              # Text, Animation, Graphics, Touch,
+│                           # Sensor, CameraCapture, CameraStream, AR, Audio
 ```
-
-## REPL Commands
-
-| Command | Action |
-|---------|--------|
-| `1`–`9` | Switch demo |
-| `d` | Toggle debug wire logging |
-| `ar` | Enter AR mode |
-| `normal` | Return to normal display mode |
-| `raw XX XX` | Send raw hex bytes |
-| `q` | Quit |
-
-## Reference
-
-- **[ARCHITECTURE_MODERN.md](ARCHITECTURE_MODERN.md)** — Full protocol reverse-engineering (1923 lines)
-- **[_dev/JAVA_SDK_SUMMARY.md](_dev/JAVA_SDK_SUMMARY.md)** — Java SDK API reference
-- **[seg-swift/UAT_GUIDE.md](seg-swift/UAT_GUIDE.md)** — Hardware testing guide
 
 ## Hardware
 
-- **Display**: 419×138 monochrome, DEFLATE-compressed bitmaps
-- **Transport**: BT RFCOMM channel 4 (SPP), WiFi TCP upgrade
-- **Sensors**: Accelerometer, gyroscope, magnetometer, light, battery
-- **Camera**: 1.3MP JPEG capture, QVGA streaming
-- **Input**: Touchpad (tap/swipe), jog wheel (CW/CCW), back/camera/PTT buttons
+| Spec | Value |
+|------|-------|
+| Display | 419×138 monochrome green OLED, 8-bit grayscale |
+| Camera | 1.3MP CMOS, JPEG output, QVGA streaming |
+| IMU | BMI160: accelerometer + gyroscope + magnetometer |
+| Touch | Capacitive strip: tap, long press, swipe L/R |
+| Buttons | Back, camera, PTT, jog wheel (CW/CCW) |
+| Transport | BT 3.0 SPP (RFCOMM ch4) + WiFi 802.11b/g/n 2.4GHz |
+| Battery | Reports level via 0x3e sensor frames |
 
 ## License
 

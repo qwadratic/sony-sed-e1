@@ -8,7 +8,3 @@ __pycache__/
 .pytest_cache/
 node_modules/
 .monitor/
-
-# Reference code — kept locally, not tracked in git
-Sony/
-_dev/
