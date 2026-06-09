@@ -25,6 +25,12 @@ final class ExplorerApp: GlassesDelegate, @unchecked Sendable {
     private var frameAckCount = 0
     private var lastInputTime: Date = .distantPast
     
+    // Onboarding state
+    private var onboarding = true
+    private var onboardingTapCount = 0
+    private var logoX: Int = 0
+    private var logoY: Int = 0
+    
     init() {
         glasses.delegate = self
     }
@@ -45,9 +51,9 @@ final class ExplorerApp: GlassesDelegate, @unchecked Sendable {
         print("[\(ts)] PHASE: \(phase)")
         if case .ready = phase {
             Task {
-                await renderPiLogo()
-                try? await Task.sleep(for: .seconds(2))
-                await renderMenu()
+                onboarding = true
+                onboardingTapCount = 0
+                await renderOnboarding()
             }
         }
     }
@@ -60,19 +66,21 @@ final class ExplorerApp: GlassesDelegate, @unchecked Sendable {
         let ts = ISO8601DateFormatter().string(from: now)
         print("[\(ts)] INPUT: \(event)")
         Task {
+            if onboarding {
+                await handleOnboardingInput(event)
+                return
+            }
             if let demo = activeDemo {
                 switch event {
                 case .tap:
                     await demo.onTap()
                 case .swipeLeft, .swipeRight, .backButton:
                     if case .backButton = event {
-                        // Swipe down exits demo
                         await exitDemo()
                     } else {
                         await demo.onSwipe(event)
                     }
                 default:
-                    // Route touch events to TouchDemo if applicable
                     if let touchDemo = demo as? TouchDemo {
                         touchDemo.onTouchEvent(event)
                     }
@@ -197,28 +205,83 @@ final class ExplorerApp: GlassesDelegate, @unchecked Sendable {
 
     // MARK: - Pi Logo Boot Screen
     
-    /// Draw the Pi favicon (pixel-art staircase P + dot) from pi.dev/favicon.svg
-    func renderPiLogo(at logoX: Int? = nil, logoY: Int? = nil) async {
+    // MARK: - Onboarding
+    
+    private func renderOnboarding() async {
         fb.clear()
-        drawPiLogo(at: logoX, logoY: logoY)
+        
+        // Center logo initially
+        logoX = (fb.width - 80) / 2
+        logoY = (fb.height - 80) / 2 - 10
+        drawPiLogo(at: logoX, logoY: logoY, size: 80)
+        
+        // Instruction text
+        TextRenderer.drawText("Swipe the touch surface", x: 4, y: fb.height - 20, on: fb, value: 200)
+        TextRenderer.drawText("Tap 3x to continue", x: 4, y: fb.height - 10, on: fb, value: 128)
+        
         await glasses.display.show(fb.pixels)
     }
     
-    /// Draw Pi logo into framebuffer without sending. Returns logo bounds.
+    private func handleOnboardingInput(_ event: InputEvent) async {
+        switch event {
+        case .tap:
+            onboardingTapCount += 1
+            print("  [onboarding] tap \(onboardingTapCount)/3")
+            if onboardingTapCount >= 3 {
+                onboarding = false
+                print("  [onboarding] complete!")
+                await renderMenu()
+                return
+            }
+            // Redraw with tap count indicator
+            fb.clear()
+            drawPiLogo(at: logoX, logoY: logoY, size: 80)
+            let dots = String(repeating: "*", count: onboardingTapCount) + String(repeating: ".", count: 3 - onboardingTapCount)
+            TextRenderer.drawText("Tap [\(dots)]", x: 4, y: fb.height - 20, on: fb, value: 200)
+            TextRenderer.drawText("\(3 - onboardingTapCount) more to start", x: 4, y: fb.height - 10, on: fb, value: 128)
+            await glasses.display.show(fb.pixels)
+            
+        case .swipeLeft:
+            logoX = max(0, logoX - 30)
+            await redrawOnboarding()
+        case .swipeRight:
+            logoX = min(fb.width - 80, logoX + 30)
+            await redrawOnboarding()
+        case .fingerOn, .fingerOff:
+            break  // ignore
+        default:
+            // Jog wheel moves logo too
+            if case .jogRotateCW = event {
+                logoX = min(fb.width - 80, logoX + 15)
+                await redrawOnboarding()
+            } else if case .jogRotateCCW = event {
+                logoX = max(0, logoX - 15)
+                await redrawOnboarding()
+            }
+        }
+    }
+    
+    private func redrawOnboarding() async {
+        fb.clear()
+        drawPiLogo(at: logoX, logoY: logoY, size: 80)
+        let dots = String(repeating: "*", count: onboardingTapCount) + String(repeating: ".", count: 3 - onboardingTapCount)
+        TextRenderer.drawText("Swipe to move logo", x: 4, y: fb.height - 20, on: fb, value: 200)
+        TextRenderer.drawText("Tap [\(dots)] \(3 - onboardingTapCount) more", x: 4, y: fb.height - 10, on: fb, value: 128)
+        await glasses.display.show(fb.pixels)
+    }
+    
+    /// Draw Pi logo into framebuffer without sending. Returns logo center + size.
     @discardableResult
-    func drawPiLogo(at logoX: Int? = nil, logoY: Int? = nil) -> (x: Int, y: Int, size: Int) {
+    func drawPiLogo(at logoX: Int? = nil, logoY: Int? = nil, size: Int = 110) -> (x: Int, y: Int, size: Int) {
         // Pi favicon.svg: 800x800 viewBox, pixel-art staircase P + dot
         // SVG coords: 165.29, 282.65, 400, 517.36, 634.72 (unit=117.36)
-        let logoSize = 110
+        let logoSize = size
         let s = { (v: Double) -> Int in Int(v * Double(logoSize) / 800.0) }
         
         let ox = logoX ?? (fb.width - logoSize) / 2
         let oy = logoY ?? (fb.height - logoSize) / 2
         
-        // Rounded background
-        fb.fillRect(x: ox, y: oy, w: logoSize, h: logoSize, value: 25)
-        
-        // P staircase (outer shape as rects)
+        // P staircase — full brightness white on black
         // Top bar: (165,165) to (517,282)
         fb.fillRect(x: ox+s(165.29), y: oy+s(165.29), w: s(517.36)-s(165.29), h: s(282.65)-s(165.29), value: 255)
         // Left col row1: (165,282) to (282,400)
@@ -232,9 +295,6 @@ final class ExplorerApp: GlassesDelegate, @unchecked Sendable {
         
         // Dot: (517,400) to (634,634)
         fb.fillRect(x: ox+s(517.36), y: oy+s(400), w: s(634.72)-s(517.36), h: s(634.72)-s(400), value: 255)
-        
-        // "pi.dev" text bottom-right
-        TextRenderer.drawText("pi.dev", x: fb.width - 42, y: fb.height - 10, on: fb, value: 100)
         
         return (ox, oy, logoSize)
     }
