@@ -62,7 +62,7 @@ public final class WifiSubsystem: @unchecked Sendable {
         }
 
         let req = buildWifiConnectReq(ssid: ssid, passphrase: passphrase, psk: psk,
-                                       goIP: ip, port: serverPort, channelMHz: channelMHz)
+                                       hostIP: ip, port: serverPort, channelMHz: channelMHz)
         state = .connecting
         await transport.send(req, label: "WifiConnectReq")
 
@@ -163,37 +163,112 @@ public final class WifiSubsystem: @unchecked Sendable {
     }
 
     internal func buildWifiConnectReq(ssid: String, passphrase: String, psk: String,
-                                       goIP: String, port: Int, channelMHz: Int) -> [UInt8] {
+                                       hostIP: String, port: Int, channelMHz: Int) -> [UInt8] {
+        // 184-byte payload layout (from DEX bytecode analysis):
+        // 0x00-0x1F: SSID (32 bytes, null-padded)
+        // 0x20-0x3F: Passphrase (32 bytes, null-padded)
+        // 0x40-0x5F: Reserved (zeros)
+        // 0x60-0x63: goAddr (WiFi Direct GO IP — zeros for infrastructure mode)
+        // 0x64-0x67: staAddr (TCP server IP — glasses connect HERE)
+        // 0x68-0x6B: subnetMask
+        // 0x6C-0x6F: gateway (same as staAddr for simple networks)
+        // 0x70-0x73: dnsServer (can be zeros)
+        // 0x74-0x75: frequency in MHz (big-endian)
+        // 0x76-0x77: TCP port (big-endian)
+        // 0x78-0xB7: PSK as 64-char hex string
         var payload = [UInt8](repeating: 0, count: 184)
+        
         let ssidB = Array(ssid.utf8.prefix(32))
         for i in 0..<ssidB.count { payload[i] = ssidB[i] }
+        
         let passB = Array(passphrase.utf8.prefix(32))
         for i in 0..<passB.count { payload[0x20 + i] = passB[i] }
-        let octets = goIP.split(separator: ".").compactMap { UInt8($0) }
+        
+        let octets = hostIP.split(separator: ".").compactMap { UInt8($0) }
         guard octets.count == 4 else { return [] }
-        for i in 0..<4 { payload[0x60 + i] = octets[i] }
+        
+        // 0x60: goAddr = zeros (infrastructure mode, not WiFi Direct)
+        // 0x64: staAddr = our TCP server IP (REQUIRED — glasses TCP-connect here)
+        for i in 0..<4 { payload[0x64 + i] = octets[i] }
+        
+        // 0x68: subnet mask
         payload[0x68] = 255; payload[0x69] = 255; payload[0x6A] = 255; payload[0x6B] = 0
-        payload[0x74] = UInt8((channelMHz >> 8) & 0xFF); payload[0x75] = UInt8(channelMHz & 0xFF)
-        payload[0x76] = UInt8((port >> 8) & 0xFF); payload[0x77] = UInt8(port & 0xFF)
+        
+        // 0x6C: gateway = same as host IP
+        for i in 0..<4 { payload[0x6C + i] = octets[i] }
+        
+        // 0x74: frequency
+        payload[0x74] = UInt8((channelMHz >> 8) & 0xFF)
+        payload[0x75] = UInt8(channelMHz & 0xFF)
+        
+        // 0x76: TCP port
+        payload[0x76] = UInt8((port >> 8) & 0xFF)
+        payload[0x77] = UInt8(port & 0xFF)
+        
+        // 0x78: PSK as 64-char hex string
         let pskB = Array(psk.utf8.prefix(64))
         for i in 0..<pskB.count { payload[0x78 + i] = pskB[i] }
+        
+        print("  [wifi] ConnectReq: ssid=\(ssid) staAddr=\(hostIP):\(port) freq=\(channelMHz)MHz psk=\(psk.prefix(8))...")
         return [0x94, 0x00, 0xB8] + payload
     }
 
     internal func detectWifiChannel() -> Int {
+        // Try system_profiler (works without special permissions)
         let proc = Process()
-        proc.executableURL = URL(fileURLWithPath: "/usr/bin/env")
-        proc.arguments = ["bash", "-c",
-            "/System/Library/PrivateFrameworks/Apple80211.framework/Versions/Current/Resources/airport -I 2>/dev/null | awk '/channel:/{print $2}' | head -1"]
+        proc.executableURL = URL(fileURLWithPath: "/usr/sbin/system_profiler")
+        proc.arguments = ["SPAirPortDataType"]
         let pipe = Pipe()
         proc.standardOutput = pipe
         proc.standardError = FileHandle.nullDevice
         try? proc.run(); proc.waitUntilExit()
-        let raw = String(data: pipe.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8)?
+        let output = String(data: pipe.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8) ?? ""
+        
+        // Parse "Channel: 40 (5GHz, 80MHz)" or "Channel: 6 (2GHz, 20MHz)"
+        for line in output.split(separator: "\n") {
+            let trimmed = line.trimmingCharacters(in: .whitespaces)
+            if trimmed.hasPrefix("Channel:") {
+                let parts = trimmed.split(separator: " ")
+                if parts.count >= 2, let ch = Int(parts[1]) {
+                    let freq = channelToFrequency(ch)
+                    print("  [wifi] Detected channel \(ch) → \(freq) MHz")
+                    return freq
+                }
+            }
+        }
+        
+        // Fallback: try airport tool
+        let proc2 = Process()
+        proc2.executableURL = URL(fileURLWithPath: "/usr/bin/env")
+        proc2.arguments = ["bash", "-c",
+            "/System/Library/PrivateFrameworks/Apple80211.framework/Versions/Current/Resources/airport -I 2>/dev/null | awk '/channel:/{print $2}' | head -1"]
+        let pipe2 = Pipe()
+        proc2.standardOutput = pipe2
+        proc2.standardError = FileHandle.nullDevice
+        try? proc2.run(); proc2.waitUntilExit()
+        let raw = String(data: pipe2.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8)?
             .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
         let chStr = raw.split(separator: ",").first.flatMap(String.init) ?? raw
-        if let ch = Int(chStr), ch >= 1, ch <= 14 { return 2407 + ch * 5 }
-        return 2437  // default ch6
+        if let ch = Int(chStr) {
+            let freq = channelToFrequency(ch)
+            print("  [wifi] Airport channel \(ch) → \(freq) MHz")
+            return freq
+        }
+        
+        print("  [wifi] Channel detection failed, defaulting to 2437 MHz (ch6)")
+        return 2437
+    }
+    
+    private func channelToFrequency(_ channel: Int) -> Int {
+        // 2.4 GHz band: channels 1-14
+        if channel >= 1 && channel <= 14 {
+            return 2407 + channel * 5
+        }
+        // 5 GHz band: channels 36-165
+        if channel >= 36 && channel <= 165 {
+            return 5000 + channel * 5
+        }
+        return 2437 // fallback ch6
     }
 }
 

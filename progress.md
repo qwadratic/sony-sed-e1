@@ -1,222 +1,202 @@
-# FOTA / Firmware Research — Complete Findings
+# WiFi ConnectReq (0x94) Payload Research — COMPLETE
 
-**Date:** 2026-06-08  
-**Status:** ✅ COMPLETE — Rich data extracted from SmartEyeglassEmulator.apk DEX strings
+## Status: ✅ DEFINITIVE FINDINGS from DEX bytecode disassembly
 
----
-
-## Executive Summary
-
-The SED-E1 firmware is **immutable** — ARCHITECTURE_MODERN.md line 1570 explicitly states: *"The SED-E1 firmware is immutable — no OTA, no modification."* However, the Sony HostApp (bundled inside SmartEyeglassEmulator.apk) contains a **complete FOTA subsystem** with 6 wire commands, a multi-phase update UI, and DFU mode support. This FOTA system was designed for the HostApp to push firmware updates to the glasses over BT/WiFi, but **our glasses likely already have final firmware** and the FOTA handshake during connection is just a version check that responds "no update needed."
+Research method: Full DEX class analysis + constructor disassembly of `WifiConnectReq.java`
+from the SmartEyeglassEmulator APK (`com.sonyericsson.j2.commands.WifiConnectReq`).
 
 ---
 
-## 1. Decompilation Status
-
-| Asset | Status |
-|-------|--------|
-| Decompiled smali/DEX | ❌ None found anywhere in project |
-| HostApp APK (com.sony.smarteyeglass) | ❌ Not present — only the Emulator APK exists |
-| SmartEyeglassEmulator.apk | ✅ Present at `Sony/sony_smarteyeglass_sdk/.../apks/SmartEyeglassEmulator.apk` |
-| Decompilation tools (apktool/jadx) | ❌ Not installed via brew |
-| DEX string extraction | ✅ **Successful** — `unzip -p ... classes.dex \| strings` yielded full class/method/constant names |
-
-**Key finding:** The Emulator APK (1.2MB DEX) contains the **complete HostApp j2 wire protocol layer** (`com.sonyericsson.j2.*`) plus the emulator UI (`com.sony.smarteyeglass.emulator.*`). This means ALL wire protocol logic including FOTA is in this DEX.
-
----
-
-## 2. FOTA Wire Protocol — 6 Commands Identified
-
-From DEX string extraction of `COMMAND_*` constants:
-
-| Command Constant | Wire ID | Direction | Role |
-|-----------------|---------|-----------|------|
-| `COMMAND_FOTA_STATUS` | `0x81` | RX (glasses→host) | Glasses report FOTA status during handshake |
-| `COMMAND_NEW_HOSTAPP` | `0x85` | TX (host→glasses) | Host announces its version; triggers FOTA check |
-| `COMMAND_FOTA_RECIPE` | unknown | TX? | Recipe = update manifest (blocks, versions) |
-| `COMMAND_FOTA_IMAGE_REQ` | unknown | TX (host→glasses) | Request firmware image block transfer |
-| `COMMAND_FOTA_IMAGE_RES` | unknown | RX (glasses→host) | Response to image block request |
-| `COMMAND_FOTA_FW_UPDATE` | unknown | TX? | Trigger the actual firmware flash |
-| `COMMAND_FOTA_REBOOT` | unknown | TX? | Reboot glasses after flash |
-| `COMMAND_ENTER_DFU_MODE` | unknown | TX? | Put glasses into DFU (Device Firmware Update) mode |
-
-### Java Classes in j2 Package
+## 1. EXACT 184-Byte Payload Layout (from DEX bytecode)
 
 ```
-com.sonyericsson.j2.commands.FotaStatus       — parses 0x81 response
-com.sonyericsson.j2.commands.FotaRecipe        — FOTA update recipe/manifest
-com.sonyericsson.j2.commands.FotaImageRequest   — request firmware image blocks
-com.sonyericsson.j2.commands.FotaImageResponse  — receive firmware image blocks
-com.sonyericsson.j2.commands.FotaFwUpdate       — initiate FW update
-com.sonyericsson.j2.commands.FotaReboot         — reboot after update
-com.sonyericsson.j2.commands.NewHostApp         — announce HostApp version (0x85)
-com.sonyericsson.j2.commands.VersionRequest     — version query (0x07)
-com.sonyericsson.j2.commands.VersionResponse    — version reply (0x08)
-com.sonyericsson.j2.commands.ProtocolVersion    — protocol ver (0x0a)
-com.sonyericsson.j2.FirmwareVersionFetcher      — retrieves/parses FW version
-com.sonyericsson.j2.preferences.FirmwarePreferences — UI for firmware settings
+Offset  Size  Field         Java Type       Required  Notes
+──────  ────  ────────────  ──────────────  ────────  ─────────────────────────────────
+0x00    32    SSID          String.getBytes  yes      UTF-8 bytes, length = strlen, rest = 0
+0x20    32    passphrase    String.getBytes  yes      UTF-8 bytes, length = strlen, rest = 0
+0x40    32    (reserved)    —                —        ALWAYS ZEROS (no code writes here)
+0x60    4     goAddr        Inet4Address     no       Group Owner IP (optional, 0 if null)
+0x64    4     staAddr       Inet4Address     YES      Station/host IP — TCP target address
+0x68    4     subnetMask    Inet4Address     yes      e.g. 255.255.255.0
+0x6C    4     gateway       Inet4Address     no       Router gateway (optional, 0 if null)
+0x70    4     dnsServer     Inet4Address     no       DNS server (optional, 0 if null)
+0x74    2     freq          short (BE)       yes      WiFi channel frequency in MHz
+0x76    2     port          short (BE)       yes      TCP server port (port & 0xFFFF)
+0x78    64    psk           String.getBytes  yes      PBKDF2 result as 64-char hex string
+──────  ────
+TOTAL   184 (0xB8)
 ```
 
----
+Wire frame: `[0x94][0x00][0xB8][184 payload bytes]` = 187 bytes total.
 
-## 3. FOTA Update Flow (Reconstructed from Strings)
+## 2. 🔴 CRITICAL BUG in Swift `buildWifiConnectReq()`
 
-### Phase A: Handshake Version Check (what we already implement)
-```
-1. RX 0x0a  → ProtocolVersion (glasses announce protocol ver)
-2. TX 0x71  → SettingsStatusRequest
-3. RX 0x72  → SettingsStatusResponse
-4. TX 0x07  → VersionRequest [0x01]
-5. RX 0x08  → VersionResponse (contains FW version string)
-   Debug: "FW version = %s"
-   Debug: "Supported protocol version by accessory: %s"
-6. TX 0x85  → NewHostApp [0x00, 0x00, 0x00, 0x00]
-   (announces host app version; payload = 4 bytes, all zeros = "no bundled firmware")
-7. RX 0x81  → FotaStatus
-   (glasses respond with FOTA status — likely "no update needed")
-```
+**The Mac's IP address is in the WRONG field.**
 
-### Phase B: Actual FOTA Transfer (if update available)
-```
-8. TX FOTA_RECIPE  → Send update recipe (block count, version info)
-   Debug: "exOK=%d inOK=%d blockNum=%d version=%s"
-   Fields: startBlockNum, updatedBlockNum, blockCount, subblock
-   
-9. TX FOTA_IMAGE_REQ  → Request firmware image blocks
-   Fields: block, subblock, blockData, imageSize
-   Debug: "startBlockNum=%d", "block=%d subblock=%d"
-   
-10. RX FOTA_IMAGE_RES  → Glasses send image block data back (or confirm receipt?)
+| What | Java (correct) | Swift (buggy) |
+|------|---------------|---------------|
+| Mac IP (TCP server) | offset 0x64 (`staAddr`) | offset 0x60 (`goAddr`) |
+| offset 0x64 | **REQUIRED** field | left as zeros |
+
+The Java constructor **throws IllegalArgumentException("must set sta address")** if `staAddr` is null.
+The `toString()` stores `staAddr.toString()` as `mIPAddress` — confirming `staAddr` is the TCP target.
+Debug format string in APK: `$ssid:%s, freq:%d, ipAddr:%s, port:%d` where `ipAddr` = `staAddr`.
+
+**Fix**: Move Mac IP from offset 0x60 to 0x64. Set 0x60 to 0.0.0.0 (or router IP for infrastructure).
+
+## 3. Java Class Structure (from DEX)
+
+```java
+class WifiConnectReq extends Command {
+    // Command base: byte[] data, int id (=0x94), int length (=184)
     
-11. TX FOTA_FW_UPDATE  → Commit the firmware update
+    // Instance fields (for toString display only):
+    private short  mFreq;       // channel MHz
+    private String mIPAddress;  // = staAddr.toString()
+    private int    mPortNum;    // TCP port
+    private String mSSID;       // SSID
     
-12. TX FOTA_REBOOT  → Reboot glasses with new firmware
+    // Constructor (10 params):
+    WifiConnectReq(
+        String ssid,               // → data[0x00]
+        String passphrase,         // → data[0x20]
+        String psk,                // → data[0x78] (hex string)
+        Inet4Address goAddr,       // → data[0x60] (nullable)
+        Inet4Address staAddr,      // → data[0x64] (REQUIRED)
+        Inet4Address subnetMask,   // → data[0x68]
+        Inet4Address gateway,      // → data[0x6C] (nullable)
+        Inet4Address dnsServer,    // → data[0x70] (nullable)
+        short freq,                // → data[0x74] (BE)
+        int port                   // → data[0x76] (BE, masked 0xFFFF)
+    )
+    
+    // Second constructor for deserialization:
+    WifiConnectReq(byte[] rawPayload)
+}
 ```
 
-### Phase C: DFU Mode (emergency/recovery)
-```
-COMMAND_ENTER_DFU_MODE — Put glasses into Device Firmware Update mode
-(Preference key: "enter_dfu_mode_pref_key" / "enterDfuModePref")
-(Available from FirmwarePreferences settings screen)
-```
+## 4. Key Answers to Research Questions
 
-### FOTA UI Screens (from layout XMLs)
-```
-fota_recommended.xml  — "A firmware update is recommended"
-fota_make_sure.xml    — "Are you sure?" confirmation
-fota_notification.xml — System notification during update
-fota_progress.xml     — Download/flash progress bar
-fota_completed.xml    — "Update complete"
-fota_interrupted.xml  — "Update was interrupted"
-fota_not_needed.xml   — "Latest version already installed"
-```
+### Q: Is PSK sent as raw 32 bytes or 64-char hex string?
+**A: 64-char hex string** at offset 0x78. The Java code does `psk.getBytes()` on the hex string
+parameter. Offset 0x40-0x5F is ALWAYS ZEROS (confirmed by bytecode — no writes to that region).
 
-### Resource Strings (from resources.arsc)
-```
-"Accessory firmware update"
-"The latest version of the firmware is already installed on your accessory."
-"The update was interrupted."
-"A later version of SmartEyeglass application is required. Update to the latest version."
-"bundled_firmare_version" [sic — typo in Sony code]
-```
+### Q: What is the EXACT offset for IP, port, channel?
+- **staAddr (TCP target IP)**: offset 0x64 (4 bytes, big-endian network order)
+- **goAddr (glasses GO IP)**: offset 0x60 (4 bytes, optional)
+- **port**: offset 0x76 (2 bytes, big-endian)
+- **channel/freq**: offset 0x74 (2 bytes, big-endian, MHz)
 
----
+### Q: WiFi Direct or infrastructure mode?
+**Both supported.** The emulator APK has NO Android WiFi P2P APIs (`WifiP2pManager` etc.) —
+all WiFi control is at wire-protocol level. The glasses firmware handles WiFi internally.
+- `goAddr` = glasses' own IP when acting as WiFi Direct GO (optional, zero for infrastructure)
+- `staAddr` = host's IP = TCP server address (REQUIRED)
+- In infrastructure mode: goAddr=0.0.0.0, staAddr=host IP
 
-## 4. The 0x85 NewHostApp Payload
+### Q: What frequency/channel format?
+**MHz as big-endian short.** Examples: ch1=2412, ch6=2437, ch11=2462.
+The Swift `detectWifiChannel()` already computes this correctly.
 
-Our current implementation sends: `[0x85, 0x00, 0x04, 0x00, 0x00, 0x00, 0x00]`
+### Q: Is the subnet mask correct (255.255.255.0)?
+**Yes, 255.255.255.0 is fine** for typical home networks. Java passes it as Inet4Address.
 
-- Byte 0: `0x85` = command ID
-- Bytes 1-2: `0x00, 0x04` = payload length (4 bytes)
-- Bytes 3-6: `0x00, 0x00, 0x00, 0x00` = **host app version = 0**
+## 5. All Issues in Current Swift Code
 
-This effectively tells the glasses "I have no bundled firmware" — which makes the glasses respond with `0x81` FotaStatus = "no update needed" and the handshake continues.
+### 🔴 P0: IP in wrong field (WILL prevent WiFi from working)
+```swift
+// CURRENT (WRONG):
+for i in 0..<4 { payload[0x60 + i] = octets[i] }  // puts Mac IP in goAddr
 
-**The DEX string `bundled_firmare_version`** suggests the HostApp could carry a bundled firmware image. When the HostApp had a newer firmware than the glasses, the 4-byte payload in 0x85 would encode the HostApp's bundled firmware version, triggering the FOTA flow.
-
----
-
-## 5. The 0x08 VersionResponse Payload
-
-From ARCHITECTURE_MODERN.md line 1640: *"RX 0x08 (contains FW version string)"*
-
-Debug string from DEX: `"FW version = %s"` and `"Supported protocol version by accessory: %s"`
-
-**Our current implementation ignores this payload.** We should parse it to:
-1. Log the actual firmware version of connected glasses
-2. Display it in REPL/diagnostics
-3. Confirm our glasses are on final firmware
-
----
-
-## 6. What This Means for Our Project
-
-### Confirmed: Firmware is Immutable for Our Purposes
-- ARCHITECTURE_MODERN.md explicitly says so (line 1570)
-- Sony discontinued the product; no new firmware will be released
-- The FOTA handshake is vestigial — glasses respond "no update" and move on
-- Our 5-second timeout for 0x81 is correct behavior
-
-### Actionable Items
-
-| Priority | Action | Effort |
-|----------|--------|--------|
-| **Low** | Parse 0x08 VersionResponse payload to log FW version string | ~10 lines Swift |
-| **Low** | Parse 0x81 FotaStatus payload to confirm "no update" status byte | ~5 lines Swift |
-| **None** | Implement actual FOTA transfer | Not needed — no firmware to push |
-| **None** | Implement DFU mode | Dangerous — could brick glasses |
-| **Info** | Install jadx (`brew install jadx`) to fully decompile Emulator APK | Optional for deep protocol RE |
-
-### Risk: DFU Mode
-The `COMMAND_ENTER_DFU_MODE` command exists and is accessible from the FirmwarePreferences screen. **Do NOT send this command** — it would put the glasses into a bootloader mode that expects a firmware image we don't have, potentially bricking them.
-
----
-
-## 7. Complete Wire Protocol Command Map (from DEX)
-
-All 80+ COMMAND_* constants extracted. New ones not in our CommandConstants.swift:
-
-```
-COMMAND_ACK                          COMMAND_NAK
-COMMAND_ENTER_DFU_MODE               COMMAND_FOTA_FW_UPDATE
-COMMAND_FOTA_IMAGE_REQ               COMMAND_FOTA_IMAGE_RES
-COMMAND_FOTA_REBOOT                  COMMAND_FOTA_RECIPE
-COMMAND_CHANGE_STATE                 COMMAND_CHANGE_VIEWPORT
-COMMAND_CYLINDRICAL_MODE             COMMAND_DEBUG_MESSAGE
-COMMAND_DEBUG_SET_ACC_VALUES          COMMAND_DISPLAY_MASK_SELECT
-COMMAND_HFP_CALL                     COMMAND_HFP_NOTIFY
-COMMAND_HOSTAPP_EVENT                COMMAND_LEVEL_INVALIDATE
-COMMAND_OPEN_APP_EDIT_RING           COMMAND_OPEN_APP_KEYEVENT
-COMMAND_OPEN_APP_OBJECT              COMMAND_OPEN_APP_OBJECT_ACK
-COMMAND_OPEN_APP_OBJECT_CONTROL      COMMAND_OPEN_APP_OBJECT_DELETE
-COMMAND_OPEN_APP_OBJECT_REQ          COMMAND_OPEN_APP_OBJECT_RSP
-COMMAND_OPEN_APP_SET_SWIPE_MODE      COMMAND_OPEN_APP_SHIFT_OBJECT
-COMMAND_OPEN_APP_STOP                COMMAND_OPEN_APP_STOP_REQ
-COMMAND_OPEN_APP_TOUCH               COMMAND_OPEN_APP_VIBRATE
-COMMAND_PLAY_SOUNDEFFECT             COMMAND_PREF_CHANGE
-COMMAND_SCREEN_LOCK                  COMMAND_SCREEN_UNLOCK
-COMMAND_SETTINGS_PAIRING_REQ         COMMAND_SETTINGS_RESET
-COMMAND_STANDBY_NOTIFICATION         COMMAND_STANDBY_PERMISSION_REQ
-COMMAND_STANDBY_PERMISSION_RSP       COMMAND_STANDBY_REQ
-COMMAND_STANDBY_WOW                  COMMAND_SYNC_ACK
-COMMAND_SYNC_REQ                     COMMAND_SYNC_REQUEST
-COMMAND_WIFI_CONNECTIVITY_STATUS     (= COMMAND_WIFI_STATUS_RES? or separate)
+// CORRECT:
+for i in 0..<4 { payload[0x64 + i] = octets[i] }  // put Mac IP in staAddr
+// leave 0x60 as zeros (or set to router IP)
 ```
 
----
+### ⚠️ P1: gateway and dnsServer are zeros
+The Java code passes these as optional params. For infrastructure mode, setting the
+actual gateway/DNS may help the glasses' WiFi stack resolve connectivity faster.
+Get from: `netstat -rn | awk '/default/{print $2}'` or `scutil --dns`.
 
-## 8. Files Retrieved
+### ℹ️ P2: goAddr should be explicitly zero for infrastructure mode
+Currently contains Mac IP (wrong). Should be 0.0.0.0 for infrastructure mode,
+or the glasses' desired GO IP for WiFi Direct mode.
 
-1. `ARCHITECTURE_MODERN.md` (lines 34, 85, 99, 120, 186, 210-215, 340-362, 1530-1570, 1620-1700, 1740-1760) — Protocol handshake FSM, FOTA phase, immutable firmware statement
-2. `seg-swift/SEGKit/Sources/SEGKit/ProtocolActor.swift` (lines 40-81, 186-225) — Current FOTA handling implementation
-3. `seg-swift/SEGKit/Sources/SEGKit/CommandConstants.swift` (full file) — Current wire command IDs
-4. `Sony/.../apks/SmartEyeglassEmulator.apk` → `classes.dex` strings — **Primary source**: all FOTA classes, commands, UI strings
-5. `Sony/.../SmartEyeglassAPI/src/com/sony/smarteyeglass/SmartEyeglassControl.java` (lines 60-85, 635-650) — API version confirm intent
-6. `_dev/.../Registration.java` (lines 960-971) — FIRMWARE_VERSION column in registration DB
-7. `Sony/.../SmartEyeglassControlUtils.java` (lines 405-430) — API version handshake to HostApp
+## 6. Recommended Fix (WifiSubsystem.swift `buildWifiConnectReq`)
 
----
+```swift
+internal func buildWifiConnectReq(ssid: String, passphrase: String, psk: String,
+                                   goIP: String, port: Int, channelMHz: Int) -> [UInt8] {
+    var payload = [UInt8](repeating: 0, count: 184)
+    
+    // 0x00: SSID (up to 32 bytes)
+    let ssidB = Array(ssid.utf8.prefix(32))
+    for i in 0..<ssidB.count { payload[i] = ssidB[i] }
+    
+    // 0x20: passphrase (up to 32 bytes)
+    let passB = Array(passphrase.utf8.prefix(32))
+    for i in 0..<passB.count { payload[0x20 + i] = passB[i] }
+    
+    // 0x40: reserved — leave as zeros (confirmed by DEX: nothing written here)
+    
+    // 0x60: goAddr — leave as zeros for infrastructure mode
+    //   (In WiFi Direct mode, this would be the glasses' GO IP)
+    
+    // 0x64: staAddr — REQUIRED: our Mac IP (TCP server address)
+    let octets = goIP.split(separator: ".").compactMap { UInt8($0) }
+    guard octets.count == 4 else { return [] }
+    for i in 0..<4 { payload[0x64 + i] = octets[i] }
+    
+    // 0x68: subnetMask
+    payload[0x68] = 255; payload[0x69] = 255; payload[0x6A] = 255; payload[0x6B] = 0
+    
+    // 0x6C: gateway — optional, fill if available
+    // 0x70: dnsServer — optional, fill if available
+    
+    // 0x74: channel frequency (MHz, big-endian)
+    payload[0x74] = UInt8((channelMHz >> 8) & 0xFF)
+    payload[0x75] = UInt8(channelMHz & 0xFF)
+    
+    // 0x76: TCP server port (big-endian)
+    payload[0x76] = UInt8((port >> 8) & 0xFF)
+    payload[0x77] = UInt8(port & 0xFF)
+    
+    // 0x78: PSK hex string (64 chars)
+    let pskB = Array(psk.utf8.prefix(64))
+    for i in 0..<pskB.count { payload[0x78 + i] = pskB[i] }
+    
+    return [0x94, 0x00, 0xB8] + payload
+}
+```
 
-## Method
+## 7. Files That Need Changes
 
-Extracted all findings via `unzip -p SmartEyeglassEmulator.apk classes.dex | strings | grep ...` — no decompilation tools needed. Full decompilation with jadx would yield actual bytecode/logic for the FOTA state machine, but string extraction already reveals the complete protocol vocabulary and flow.
+1. **`seg-swift/SEGKit/Sources/SEGKit/WifiSubsystem.swift`** lines 117-135 (`buildWifiConnectReq`)
+   - Move IP from offset 0x60 to 0x64
+   - Optionally fill gateway (0x6C) and DNS (0x70)
+   - Rename `goIP` parameter to `hostIP` or `serverIP` for clarity
+
+2. **`ARCHITECTURE_MODERN.md`** lines 1711-1716
+   - Update payload field names: `goAddr` → `goAddr (opt)`, `staAddr` → `staAddr (REQ)`
+   - Note that 0x40-0x5F is confirmed zeros
+
+## 8. Evidence Chain
+
+| Source | Finding |
+|--------|---------|
+| DEX class def | WifiConnectReq has 4 instance fields + extends Command(byte[] data) |
+| DEX constructor params | 10 params: 3 String + 5 Inet4Address + short + int |
+| DEX bytecode 0x0004 | `super(0x94, 184)` — confirms cmd=0x94, len=184 |
+| DEX bytecode 0x0009 | `Arrays.fill(data, 0)` — entire buffer zeroed |
+| DEX bytecode 0x0019 | `arraycopy(ssid, 0, data, 0, len)` — SSID at 0x00 |
+| DEX bytecode 0x0029 | `arraycopy(pass, 0, data, 32, len)` — pass at 0x20 |
+| DEX bytecode 0x0031 | `ByteBuffer.wrap(data, 96, 88)` — BB starts at 0x60 |
+| DEX bytecode 0x003e | `bb.put(goAddr.getAddress())` — goAddr at 0x60 |
+| DEX bytecode 0x0047 | `bb.put(staAddr.getAddress())` — staAddr at 0x64 |
+| DEX bytecode 0x009b | `throw IAE("must set sta address")` — staAddr required |
+| DEX bytecode 0x0069 | `bb.putShort(freq)` — freq at 0x74 |
+| DEX bytecode 0x0072 | `bb.putShort(port & 0xFFFF)` — port at 0x76 |
+| DEX bytecode 0x0079 | `bb.put(psk.getBytes())` — PSK hex at 0x78 |
+| DEX bytecode 0x0084 | `mIPAddress = staAddr.toString()` — TCP target = staAddr |
+| DEX string table | `$ssid:%s, freq:%d, ipAddr:%s, port:%d` — confirms field semantics |
+| DEX string table | `"must set sta address"` — staAddr is required |
