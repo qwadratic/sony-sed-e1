@@ -288,6 +288,8 @@ final class ExplorerApp: GlassesDelegate, @unchecked Sendable {
         fb.fillRect(x: ox+s(165.29), y: oy+s(282.65), w: s(282.65)-s(165.29), h: s(400)-s(282.65), value: 255)
         // Right arm row1: (400,282) to (517,400)
         fb.fillRect(x: ox+s(400), y: oy+s(282.65), w: s(517.36)-s(400), h: s(400)-s(282.65), value: 255)
+        // Under hole: (282,400) to (400,517)
+        fb.fillRect(x: ox+s(282.65), y: oy+s(400), w: s(400)-s(282.65), h: s(517.36)-s(400), value: 255)
         // Left col row2: (165,400) to (282,517)
         fb.fillRect(x: ox+s(165.29), y: oy+s(400), w: s(282.65)-s(165.29), h: s(517.36)-s(400), value: 255)
         // Left col row3: (165,517) to (282,634)
