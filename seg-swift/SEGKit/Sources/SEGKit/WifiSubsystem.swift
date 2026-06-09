@@ -63,8 +63,7 @@ public final class WifiSubsystem: @unchecked Sendable {
             channelMHz = ch24
         }
         // Send 0 to let glasses auto-detect channel (firmware may ignore our hint)
-        print("  [wifi] Sending freq=0 (auto) + hint=\(channelMHz)MHz")
-        let autoFreq = 0  // Let glasses scan all 2.4GHz channels
+        // Use actual 2.4GHz frequency — glasses firmware may not support auto-scan (freq=0)
         let psk = derivePSK(ssid: ssid, passphrase: passphrase)
         guard !psk.isEmpty else {
             print("  [wifi] PSK derivation failed")
@@ -72,7 +71,7 @@ public final class WifiSubsystem: @unchecked Sendable {
         }
 
         let req = buildWifiConnectReq(ssid: ssid, passphrase: passphrase, psk: psk,
-                                       hostIP: ip, port: serverPort, channelMHz: autoFreq)
+                                       hostIP: ip, port: serverPort, channelMHz: channelMHz)
         state = .connecting
         await transport.send(req, label: "WifiConnectReq")
 
@@ -230,9 +229,9 @@ public final class WifiSubsystem: @unchecked Sendable {
         let octets = hostIP.split(separator: ".").compactMap { UInt8($0) }
         guard octets.count == 4 else { return [] }
         
-        // 0x60: goAddr = zeros (infrastructure mode, not WiFi Direct)
-        // 0x64: staAddr = our TCP server IP (REQUIRED — glasses TCP-connect here)
-        for i in 0..<4 { payload[0x64 + i] = octets[i] }
+        // Put IP at BOTH 0x60 (goAddr) and 0x64 (staAddr) — firmware may read either
+        for i in 0..<4 { payload[0x60 + i] = octets[i] }  // goAddr
+        for i in 0..<4 { payload[0x64 + i] = octets[i] }  // staAddr
         
         // 0x68: subnet mask
         payload[0x68] = 255; payload[0x69] = 255; payload[0x6A] = 255; payload[0x6B] = 0

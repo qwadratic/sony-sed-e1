@@ -170,6 +170,11 @@ internal actor ProtocolActor {
         case (_, 0x95):  // WifiConnectivityStatus
             let status = frame.payload.first ?? 0
             connection?.eventLog.debug("WifiConnectivity: \(status) (0=DISCONNECTING 1=DISCONNECTED 2=CONNECTING 3=CONNECTED)", minLevel: .normal)
+            if status == 3 {
+                connection?.wifi.state = .connected
+            } else if status == 1 {
+                connection?.wifi.state = .off
+            }
 
         case (_, 0x97):  // WifiDPSwitchPathRes
             let path = frame.payload.first ?? 0
