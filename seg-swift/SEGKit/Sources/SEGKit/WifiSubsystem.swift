@@ -54,7 +54,13 @@ public final class WifiSubsystem: @unchecked Sendable {
         startAccept(ip: ip)
 
         // Step 4: Derive PSK + build ConnectReq
-        let channelMHz = detectWifiChannel()
+        var channelMHz = detectWifiChannel()
+        // SED-E1 only supports 802.11b/g/n 2.4GHz — if Mac is on 5GHz,
+        // force 2.4GHz channel 6 (2437 MHz). Glasses can't connect to 5GHz.
+        if channelMHz > 3000 {
+            print("  [wifi] Mac on 5GHz (\(channelMHz)MHz) — forcing 2.4GHz ch6 (2437MHz) for glasses")
+            channelMHz = 2437
+        }
         let psk = derivePSK(ssid: ssid, passphrase: passphrase)
         guard !psk.isEmpty else {
             print("  [wifi] PSK derivation failed")
